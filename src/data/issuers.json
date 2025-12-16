@@ -1,0 +1,51 @@
+{
+	"version": "1.0",
+	"description": "Custom UUID Issuer Registry - Well-Recognized Technology Entities and Open Source Contributors",
+	"lastUpdated": "2025-12-15",
+	"categoryA": {
+		"description": "Well-Recognized Technology Entities (IDs 2-255)",
+		"issuers": {
+			"2": {
+				"name": "Example Corp",
+				"description": "Placeholder for future real issuer registration",
+				"website": "https://example.com",
+				"registeredAt": "2025-12-15"
+			}
+		}
+	},
+	"categoryB": {
+		"description": "Open Source Ecosystem Contributors (IDs 256-511)",
+		"issuers": {
+			"256": {
+				"name": "Example Open Source Project",
+				"description": "Placeholder for future real issuer registration",
+				"repository": "https://github.com/example/project",
+				"registeredAt": "2025-12-15"
+			}
+		}
+	},
+	"reserved": {
+		"description": "Reserved and Immutable Issuer IDs",
+		"issuers": {
+			"0": {
+				"name": "Unassigned/Open",
+				"description": "Open for all use, unreserved",
+				"immutable": true
+			},
+			"1": {
+				"name": "Drafter Reserved",
+				"description": "Reserved for specification drafter",
+				"immutable": true
+			},
+			"404": {
+				"name": "Specification Originator",
+				"description": "Reserved by specification originator",
+				"immutable": true
+			}
+		}
+	},
+	"futureRFC": {
+		"description": "Future RFC Expansion (IDs 512-1023, minimum 16 ID blocks)",
+		"blocks": []
+	}
+}
