@@ -136,10 +136,7 @@ class UUID {
 			timestampValue = timestamp;
 		}
 
-		// Set 70-bit timestamp layout FIRST (before setting variant bits that might overlap)
-		uuid._setTimestamp(timestampValue);
-
-		// Set variant (bits 64-66) = 111 - this will overwrite some timestamp bits
+		// Set variant (bits 64-66) = 111
 		uuid._setVariant(VARIANT_BITS);
 
 		// Set subvariant (bits 67-68) = 00 (Timestamp Variant)
@@ -163,10 +160,14 @@ class UUID {
 			uuid._buffer[i] = entropy[i];
 		}
 
-		// Restore immutable fields that might have been overwritten
+		// Restore immutable fields that might have been overwritten by entropy
 		uuid._setVariant(VARIANT_BITS);
 		uuid._setSubvariant(SUBVARIANT_TIMESTAMP);
 		uuid._setVersion(version);
+
+		// Set timestamp AFTER entropy to ensure timestamp bits are not overwritten
+		// Timestamp occupies bits 0-63 and 69-74 (70 bits total: 1 sign + 69 magnitude)
+		uuid._setTimestamp(timestampValue);
 
 		return uuid;
 	}
@@ -239,20 +240,31 @@ class UUID {
 		// Set sign bit: 0 = negative, 1 = positive
 		BitUtils.setBits(this._buffer, 0, 1, isNegative ? 0 : 1);
 
-		// For 63-bit values, we need to be more careful with the splitting
+		// Convert absolute timestamp to BigInt
 		const absTimestampBig = BigInt(Math.floor(absTimestamp));
 
-		// Split the timestamp properly - can't directly set 63 bits at once
-		// Set lower 32 bits first (bits 1-32)
-		const lower32 = Number(absTimestampBig & BigInt(0xffffffff));
+		// Apply negative timestamp ordering rule for storage
+		// If negative: stored = (2^69 - 1) - abs(magnitude)
+		// If positive: store magnitude directly
+		let storedMagnitude;
+		if (isNegative) {
+			const maxValue = (BigInt(1) << BigInt(69)) - BigInt(1); // 2^69 - 1
+			storedMagnitude = maxValue - absTimestampBig;
+		} else {
+			storedMagnitude = absTimestampBig;
+		}
+
+		// Split the stored magnitude into components
+		// Set lower 32 bits (bits 1-32)
+		const lower32 = Number(storedMagnitude & BigInt(0xffffffff));
 		BitUtils.setBits(this._buffer, 1, 32, lower32);
 
 		// Set middle 31 bits (bits 33-63)
-		const middle31 = Number((absTimestampBig >> BigInt(32)) & BigInt(0x7fffffff));
+		const middle31 = Number((storedMagnitude >> BigInt(32)) & BigInt(0x7fffffff));
 		BitUtils.setBits(this._buffer, 33, 31, middle31);
 
-		// Set upper timestamp bits (bits 69-74) - 6 bits available
-		const upper6 = Number((absTimestampBig >> BigInt(63)) & BigInt(0x3f));
+		// Set upper 6 bits (bits 69-74)
+		const upper6 = Number((storedMagnitude >> BigInt(63)) & BigInt(0x3f));
 		BitUtils.setBits(this._buffer, 69, 6, upper6);
 	}
 
@@ -340,9 +352,14 @@ class UUID {
 
 	/**
 	 * Get the issuer ID field
-	 * @returns {number} Issuer ID (0-ISSUER_ID_MASK)
+	 * @returns {number|null} Issuer ID (0-ISSUER_ID_MASK) for Issuer Variant, null for Timestamp Variant
 	 */
 	getIssuerID() {
+		// Issuer ID only exists in Issuer Variant (subvariant 01)
+		// For Timestamp Variant (subvariant 00), bits 79-88 are entropy, not issuer ID
+		if (this.isTimestampVariant()) {
+			return null;
+		}
 		return BitUtils.getBitsAsNumber(this._buffer, ISSUER_ID_START_BIT, ISSUER_ID_BIT_COUNT);
 	}
 
@@ -372,10 +389,15 @@ class UUID {
 
 	/**
 	 * Get issuer category based on issuer ID
-	 * @returns {string} Issuer category name
+	 * @returns {string|null} Issuer category name, or null if not an Issuer Variant
 	 */
 	getIssuerCategory() {
 		const issuerID = this.getIssuerID();
+
+		// Timestamp variants don't have issuer IDs
+		if (issuerID === null) {
+			return null;
+		}
 
 		if (issuerID === ISSUER_CATEGORIES.UNASSIGNED) return "Unassigned";
 		if (issuerID === ISSUER_CATEGORIES.DRAFTER_RESERVED) return "Drafter Reserved";
@@ -391,6 +413,52 @@ class UUID {
 		}
 
 		return "Unknown";
+	}
+
+	/**
+	 * Get the timestamp value from a Timestamp Variant UUID
+	 * @returns {number|null} Timestamp value in the stored precision (seconds for v1, milliseconds for v2+), or null if not a Timestamp Variant
+	 */
+	getTimestamp() {
+		// Timestamp only exists in Timestamp Variant (subvariant 00)
+		if (!this.isTimestampVariant()) {
+			return null;
+		}
+
+		// Extract sign bit (bit 0)
+		const signBit = BitUtils.getBitsAsNumber(this._buffer, 0, 1);
+		const isPositive = signBit === 1;
+
+		// Extract timestamp magnitude from the 69 bits
+		// Bits 1-63 (63 bits), bits 69-74 (6 bits) = 69 bits total
+
+		// Get lower 32 bits (bits 1-32)
+		const lower32 = BigInt(BitUtils.getBitsAsNumber(this._buffer, 1, 32));
+
+		// Get middle 31 bits (bits 33-63)
+		const middle31 = BigInt(BitUtils.getBitsAsNumber(this._buffer, 33, 31));
+
+		// Get upper 6 bits (bits 69-74)
+		const upper6 = BigInt(BitUtils.getBitsAsNumber(this._buffer, 69, 6));
+
+		// Reconstruct the stored 69-bit magnitude: lower32 | (middle31 << 32) | (upper6 << 63)
+		const storedMagnitude = lower32 | (middle31 << BigInt(32)) | (upper6 << BigInt(63));
+
+		// Apply negative timestamp ordering rule
+		// If sign bit = 0 (negative): stored = (2^69 - 1) - abs(magnitude)
+		// Therefore: abs(magnitude) = (2^69 - 1) - stored
+		// And: timestamp = -abs(magnitude)
+		let timestamp;
+		if (isPositive) {
+			timestamp = Number(storedMagnitude);
+		} else {
+			// Negative timestamp: decode using ordering rule
+			const maxValue = (BigInt(1) << BigInt(69)) - BigInt(1); // 2^69 - 1
+			const absMagnitude = maxValue - storedMagnitude;
+			timestamp = -Number(absMagnitude);
+		}
+
+		return timestamp;
 	}
 
 	/**
@@ -423,6 +491,7 @@ class UUID {
 			version: this.getVersion(),
 			issuerID: this.getIssuerID(),
 			issuerCategory: this.getIssuerCategory(),
+			timestamp: this.getTimestamp(),
 			isIssuerVariant: this.isIssuerVariant(),
 			isTimestampVariant: this.isTimestampVariant()
 		};

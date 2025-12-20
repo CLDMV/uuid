@@ -224,9 +224,9 @@ export class UUID {
     getVersion(): number;
     /**
      * Get the issuer ID field
-     * @returns {number} Issuer ID (0-ISSUER_ID_MASK)
+     * @returns {number|null} Issuer ID (0-ISSUER_ID_MASK) for Issuer Variant, null for Timestamp Variant
      */
-    getIssuerID(): number;
+    getIssuerID(): number | null;
     /**
      * Check if this UUID is a valid UUID (variant = 111)
      * @returns {boolean} True if valid UUID
@@ -244,9 +244,14 @@ export class UUID {
     isTimestampVariant(): boolean;
     /**
      * Get issuer category based on issuer ID
-     * @returns {string} Issuer category name
+     * @returns {string|null} Issuer category name, or null if not an Issuer Variant
      */
-    getIssuerCategory(): string;
+    getIssuerCategory(): string | null;
+    /**
+     * Get the timestamp value from a Timestamp Variant UUID
+     * @returns {number|null} Timestamp value in the stored precision (seconds for v1, milliseconds for v2+), or null if not a Timestamp Variant
+     */
+    getTimestamp(): number | null;
     /**
      * Convert UUID to string representation
      * @returns {string} UUID string with dashes

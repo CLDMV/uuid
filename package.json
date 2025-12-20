@@ -1,6 +1,6 @@
 {
 	"name": "@cldmv/uuid",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Extended RFC 4122 and RFC 9562 UUID implementation with custom variant structures, issuer-based identification, and timestamp variants",
 	"main": "./index.cjs",
 	"module": "./index.mjs",
@@ -30,6 +30,7 @@
 		"build": "npm run build:dist && npm run build:types",
 		"build:dist": "node -e \"const fs = require('fs'); const path = require('path'); fs.rmSync('dist', {recursive: true, force: true}); fs.mkdirSync('dist', {recursive: true}); fs.cpSync('src', 'dist', {recursive: true});\"",
 		"build:types": "tsc --project .configs/tsconfig.dts.jsonc",
+		"demo": "node scripts/demo-custom-uuids.mjs",
 		"test": "vitest run --config .configs/vitest.config.mjs",
 		"test:watch": "vitest --config .configs/vitest.config.mjs",
 		"test:coverage": "vitest run --coverage --config .configs/vitest.config.mjs"
