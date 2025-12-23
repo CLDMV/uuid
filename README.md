@@ -108,6 +108,34 @@ if (UUID.validateRFC(v4)) {
 }
 ```
 
+## Default String Representation
+
+UUIDs automatically convert to strings when used in string contexts. This provides a seamless developer experience:
+
+```javascript
+import { UUID } from "@cldmv/uuid";
+
+const uuid = UUID.TA();
+
+// Direct usage - automatically converts to string
+console.log(uuid); // a454aa7f-8000-019b-e003-cd2480cc8b40
+console.log("UUID: " + uuid); // UUID: a454aa7f-8000-019b-e003-cd2480cc8b40
+console.log(`UUID: ${uuid}`); // UUID: a454aa7f-8000-019b-e003-cd2480cc8b40
+
+// JSON serialization - automatically converts to string
+const obj = { id: uuid };
+JSON.stringify(obj); // {"id":"a454aa7f-8000-019b-e003-cd2480cc8b40"}
+
+// Comparisons work as expected
+uuid == uuid.toString(); // true
+uuid.valueOf() === uuid.toString(); // true
+
+// Get buffer when needed
+const buffer = uuid.toBuffer(); // <Buffer a4 54 aa 7f 80 00 01 9b e0 03 cd 24 80 cc 8b 40>
+```
+
+The UUID class implements `valueOf()`, `Symbol.toPrimitive`, and `toJSON()` to ensure proper string coercion in all contexts. Use `toBuffer()` when you explicitly need the raw binary representation.
+
 ## API Reference
 
 ### Custom UUID Specification Methods
@@ -247,18 +275,47 @@ UUID.createIssuerVariant(404, 1);
 
 Get UUID as standard hyphenated string format.
 
+**Note:** UUIDs automatically convert to strings in string contexts, so explicitly calling `toString()` is usually not necessary.
+
 ```javascript
 const str = uuid.toString();
 // => '9cf3cd36-8000-019b-e002-6009483ccba3'
+
+// Automatic string conversion (no need to call toString)
+console.log(uuid); // Same output
+console.log(`UUID: ${uuid}`); // Same output
 ```
 
 ##### `uuid.toBuffer()`
 
-Get UUID as 16-byte Buffer.
+Get UUID as 16-byte Buffer for binary operations.
 
 ```javascript
 const buffer = uuid.toBuffer();
 // => <Buffer 9c f3 cd 36 80 00 01 9b e0 02 60 09 48 3c cb a3>
+```
+
+##### `uuid.valueOf()`
+
+Returns the string representation of the UUID. This method enables automatic string coercion.
+
+```javascript
+const value = uuid.valueOf();
+// => '9cf3cd36-8000-019b-e002-6009483ccba3'
+
+// Enables automatic coercion
+String(uuid); // Same as uuid.valueOf()
+uuid + ""; // Same as uuid.valueOf()
+```
+
+##### `uuid.toJSON()`
+
+Returns the string representation for JSON serialization.
+
+```javascript
+const obj = { id: uuid };
+JSON.stringify(obj);
+// => '{"id":"9cf3cd36-8000-019b-e002-6009483ccba3"}'
 ```
 
 ##### `uuid.getInfo()`

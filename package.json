@@ -1,6 +1,6 @@
 {
 	"name": "@cldmv/uuid",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Extended RFC 4122 and RFC 9562 UUID implementation with custom variant structures, issuer-based identification, and timestamp variants",
 	"main": "./index.cjs",
 	"module": "./index.mjs",
@@ -24,7 +24,7 @@
 	},
 	"type": "module",
 	"engines": {
-		"node": ">=18.12"
+		"node": ">=16.12.0"
 	},
 	"scripts": {
 		"build": "npm run build:dist && npm run build:types",

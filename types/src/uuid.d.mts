@@ -263,10 +263,27 @@ export class UUID {
      */
     toBuffer(): Buffer;
     /**
+     * Return the primitive value of the UUID (string representation)
+     * This allows UUIDs to be automatically converted to strings when used in string contexts
+     * @returns {string} UUID string with dashes
+     */
+    valueOf(): string;
+    /**
+     * Convert UUID to JSON representation (as string)
+     * @returns {string} UUID string with dashes
+     */
+    toJSON(): string;
+    /**
      * Get detailed information about this UUID
      * @returns {object} UUID information object
      */
     getInfo(): object;
+    /**
+     * Handle type coercion for different contexts
+     * @param {string} hint - Type hint ('string', 'number', or 'default')
+     * @returns {string} UUID string representation
+     */
+    [Symbol.toPrimitive](hint: string): string;
 }
 export namespace UUID {
     let NIL: string;

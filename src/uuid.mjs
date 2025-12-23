@@ -479,6 +479,40 @@ class UUID {
 	}
 
 	/**
+	 * Return the primitive value of the UUID (string representation)
+	 * This allows UUIDs to be automatically converted to strings when used in string contexts
+	 * @returns {string} UUID string with dashes
+	 */
+	valueOf() {
+		return this.toString();
+	}
+
+	/**
+	 * Handle type coercion for different contexts
+	 * @param {string} hint - Type hint ('string', 'number', or 'default')
+	 * @returns {string} UUID string representation
+	 */
+	[Symbol.toPrimitive](hint) {
+		return this.toString();
+	}
+
+	/**
+	 * Custom inspect for Node.js console output
+	 * @returns {string} UUID string with dashes
+	 */
+	[Symbol.for("nodejs.util.inspect.custom")]() {
+		return this.toString();
+	}
+
+	/**
+	 * Convert UUID to JSON representation (as string)
+	 * @returns {string} UUID string with dashes
+	 */
+	toJSON() {
+		return this.toString();
+	}
+
+	/**
 	 * Get detailed information about this UUID
 	 * @returns {object} UUID information object
 	 */
