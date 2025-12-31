@@ -448,6 +448,51 @@ const ta = UUID.TA();
 const isIssuer2 = ta.isIssuerVariant(); // => false
 ```
 
+##### `uuid.getVariantIdentifier()`
+
+Get a human-readable identifier for the UUID variant/version. Returns a string identifier for custom variants ("TA", "TB", "IA") or the RFC version number for standard UUIDs.
+
+```javascript
+const ta = UUID.TA();
+ta.getVariantIdentifier(); // => "TA"
+
+const tb = UUID.TB();
+tb.getVariantIdentifier(); // => "TB"
+
+const ia = UUID.IA(404);
+ia.getVariantIdentifier(); // => "IA"
+
+const v4 = UUID.v4();
+v4.getVariantIdentifier(); // => 4
+
+const v7 = UUID.v7();
+v7.getVariantIdentifier(); // => 7
+```
+
+#### Static Detection Methods
+
+##### `UUID.detectVariant(uuid)`
+
+Detect the variant identifier from any UUID (string, buffer, or UUID instance). Returns a string identifier for custom variants or version number for RFC variants.
+
+```javascript
+// Custom variants return string identifiers
+UUID.detectVariant("a454aa7f-8000-019b-e003-cd2480cc8b40"); // => "TA"
+UUID.detectVariant(taUuid.toBuffer()); // => "TA"
+
+// RFC variants return version numbers
+UUID.detectVariant("6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b"); // => 4
+UUID.detectVariant("018da58e-42e0-7b67-9f36-8e7e5f5b9c38"); // => 7
+
+// Works with UUID instances
+UUID.detectVariant(UUID.IA(404)); // => "IA"
+```
+
+**Parameters:**
+- `uuid` (string|Uint8Array|UUID): UUID to detect variant from
+
+**Returns:** String identifier ("TA", "TB", "IA", etc.) or version number (1-8) for RFC UUIDs
+
 ### Standard RFC UUID Methods
 
 Complete implementation of RFC 4122/9562 standard UUID versions (bonus feature).
@@ -510,6 +555,24 @@ Generate a version 7 (Unix Epoch time-based) UUID. Sortable and monotonic.
 const uuid = UUID.v7();
 const customUuid = UUID.v7({ msecs: Date.now() });
 ```
+
+##### `UUID.v8([options])`
+
+Generate a version 8 (custom/experimental) UUID. Version 8 provides an RFC-compatible format for experimental or vendor-specific UUID formats. The only requirement is that variant and version bits are set correctly; all other bits can be filled with custom data.
+
+```javascript
+const uuid = UUID.v8(); // Random data
+const customUuid = UUID.v8({ 
+	data: new Uint8Array(16) // Your custom 16 bytes
+});
+```
+
+**Parameters:**
+- `options.data` (Uint8Array, optional): Custom 16-byte data to use. If not provided, uses cryptographically random bytes.
+- `options.buf` (Uint8Array, optional): Buffer to write UUID into.
+- `options.offset` (number, optional): Offset in buffer to start writing.
+
+**Returns:** UUID string or buffer (if `options.buf` provided)
 
 #### Utility Methods
 

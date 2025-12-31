@@ -26,7 +26,7 @@ import {
 	ISSUER_ID_MASK,
 	ISSUER_CATEGORIES
 } from "./lib/constants.mjs";
-import * as rfcUuids from "./lib/rfc-uuids.mjs";
+import * as rfcUuids from "./lib/versions/rfc/index.mjs";
 
 /**
  * UUID class implementing the new specification
@@ -388,6 +388,50 @@ class UUID {
 	}
 
 	/**
+	 * Get the version/variant identifier (TA, TB, IA for custom variants, or RFC version number)
+	 * @returns {string|number|null} Version identifier (e.g., "TA", "TB", "IA", 1-8 for RFC, or null if invalid)
+	 * @example
+	 * uuid.version(); // => "TA" for Timestamp v1
+	 * uuid.version(); // => "TB" for Timestamp v2
+	 * uuid.version(); // => "IA" for Issuer v1
+	 * uuid.version(); // => 4 for RFC v4
+	 */
+	version() {
+		// Check if this is a custom UUID (variant = 111)
+		if (this.isUUID()) {
+			const subvariant = this.getSubvariant();
+			const version = this.getVersion();
+
+			// Timestamp Variant (subvariant 00)
+			if (subvariant === SUBVARIANT_TIMESTAMP) {
+				if (version === 1) return "TA";
+				if (version === 2) return "TB";
+				// Future timestamp versions can be added here
+				return `Timestamp v${version}`;
+			}
+
+			// Issuer Variant (subvariant 01)
+			if (subvariant === SUBVARIANT_ISSUER) {
+				if (version === 1) return "IA";
+				// Future issuer versions can be added here
+				return `Issuer v${version}`;
+			}
+
+			// Reserved subvariants
+			if (subvariant === SUBVARIANT_RESERVED_10 || subvariant === SUBVARIANT_RESERVED_11) {
+				return `Reserved (subvariant ${subvariant})`;
+			}
+
+			return null;
+		}
+
+		// Not a custom UUID, check if it's a valid RFC UUID
+		const uuidString = this.toString();
+		const rfcVersion = rfcUuids.version(uuidString);
+		return rfcVersion;
+	}
+
+	/**
 	 * Get issuer category based on issuer ID
 	 * @returns {string|null} Issuer category name, or null if not an Issuer Variant
 	 */
@@ -513,6 +557,15 @@ class UUID {
 	}
 
 	/**
+	 * Get the version/variant identifier (alias for version())
+	 * @returns {string|number|null} Version identifier
+	 * @deprecated Use .version() instead
+	 */
+	getVariantIdentifier() {
+		return this.version();
+	}
+
+	/**
 	 * Get detailed information about this UUID
 	 * @returns {object} UUID information object
 	 */
@@ -523,6 +576,7 @@ class UUID {
 			variant: this.getVariant(),
 			subvariant: this.getSubvariant(),
 			version: this.getVersion(),
+			variantIdentifier: this.version(),
 			issuerID: this.getIssuerID(),
 			issuerCategory: this.getIssuerCategory(),
 			timestamp: this.getTimestamp(),
@@ -600,7 +654,7 @@ class UUID {
 	}
 
 	// RFC 4122 / RFC 9562 Standard UUID Methods
-	// Delegates to lib/rfc-uuids.mjs
+	// Delegates to lib/versions/rfc/
 
 	/**
 	 * Generate a version 1 (timestamp) UUID
@@ -659,6 +713,15 @@ class UUID {
 	}
 
 	/**
+	 * Generate a version 8 (custom/experimental) UUID
+	 * @param {Object} options - Optional parameters
+	 * @returns {string} UUID string
+	 */
+	static v8(options) {
+		return rfcUuids.v8(options);
+	}
+
+	/**
 	 * Convert UUID string to byte array
 	 * @param {string} uuid - UUID string
 	 * @returns {Uint8Array} 16-byte array
@@ -686,12 +749,42 @@ class UUID {
 	}
 
 	/**
-	 * Detect RFC version of UUID
-	 * @param {string} uuid - UUID string
-	 * @returns {number|null} Version number or null
+	 * Detect version/variant identifier of UUID (handles both RFC and custom variants)
+	 * @param {string|Buffer|UUID} uuid - UUID string, buffer, or UUID instance
+	 * @returns {string|number|null} Version identifier (e.g., "TA", "TB", "IA" for custom, 1-8 for RFC, or null if invalid)
+	 * @example
+	 * UUID.version(uuidString); // => "TA" for Timestamp v1
+	 * UUID.version(uuidString); // => "TB" for Timestamp v2
+	 * UUID.version(uuidString); // => "IA" for Issuer v1
+	 * UUID.version(uuidString); // => 4 for RFC v4
 	 */
 	static version(uuid) {
-		return rfcUuids.version(uuid);
+		// If it's already a UUID instance, use its method
+		if (uuid instanceof UUID) {
+			return uuid.version();
+		}
+
+		// Convert to UUID instance
+		try {
+			const uuidInstance = new UUID(uuid);
+			return uuidInstance.version();
+		} catch (error) {
+			// If parsing fails, try RFC version detection as fallback
+			if (typeof uuid === "string") {
+				return rfcUuids.version(uuid);
+			}
+			return null;
+		}
+	}
+
+	/**
+	 * Detect variant identifier (alias for version())
+	 * @param {string|Buffer|UUID} uuid - UUID string, buffer, or UUID instance
+	 * @returns {string|number|null} Version identifier
+	 * @deprecated Use UUID.version() instead
+	 */
+	static detectVariant(uuid) {
+		return UUID.version(uuid);
 	}
 }
 

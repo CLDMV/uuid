@@ -136,6 +136,12 @@ export class UUID {
      */
     static v7(options: any): string;
     /**
+     * Generate a version 8 (custom/experimental) UUID
+     * @param {Object} options - Optional parameters
+     * @returns {string} UUID string
+     */
+    static v8(options: any): string;
+    /**
      * Convert UUID string to byte array
      * @param {string} uuid - UUID string
      * @returns {Uint8Array} 16-byte array
@@ -154,11 +160,23 @@ export class UUID {
      */
     static validateRFC(uuid: string): boolean;
     /**
-     * Detect RFC version of UUID
-     * @param {string} uuid - UUID string
-     * @returns {number|null} Version number or null
+     * Detect version/variant identifier of UUID (handles both RFC and custom variants)
+     * @param {string|Buffer|UUID} uuid - UUID string, buffer, or UUID instance
+     * @returns {string|number|null} Version identifier (e.g., "TA", "TB", "IA" for custom, 1-8 for RFC, or null if invalid)
+     * @example
+     * UUID.version(uuidString); // => "TA" for Timestamp v1
+     * UUID.version(uuidString); // => "TB" for Timestamp v2
+     * UUID.version(uuidString); // => "IA" for Issuer v1
+     * UUID.version(uuidString); // => 4 for RFC v4
      */
-    static version(uuid: string): number | null;
+    static version(uuid: string | Buffer | UUID): string | number | null;
+    /**
+     * Detect variant identifier (alias for version())
+     * @param {string|Buffer|UUID} uuid - UUID string, buffer, or UUID instance
+     * @returns {string|number|null} Version identifier
+     * @deprecated Use UUID.version() instead
+     */
+    static detectVariant(uuid: string | Buffer | UUID): string | number | null;
     /**
      * Create a new UUID instance
      * @param {Buffer|string|null} data - Optional UUID data to parse
@@ -243,6 +261,16 @@ export class UUID {
      */
     isTimestampVariant(): boolean;
     /**
+     * Get the version/variant identifier (TA, TB, IA for custom variants, or RFC version number)
+     * @returns {string|number|null} Version identifier (e.g., "TA", "TB", "IA", 1-8 for RFC, or null if invalid)
+     * @example
+     * uuid.version(); // => "TA" for Timestamp v1
+     * uuid.version(); // => "TB" for Timestamp v2
+     * uuid.version(); // => "IA" for Issuer v1
+     * uuid.version(); // => 4 for RFC v4
+     */
+    version(): string | number | null;
+    /**
      * Get issuer category based on issuer ID
      * @returns {string|null} Issuer category name, or null if not an Issuer Variant
      */
@@ -273,6 +301,12 @@ export class UUID {
      * @returns {string} UUID string with dashes
      */
     toJSON(): string;
+    /**
+     * Get the version/variant identifier (alias for version())
+     * @returns {string|number|null} Version identifier
+     * @deprecated Use .version() instead
+     */
+    getVariantIdentifier(): string | number | null;
     /**
      * Get detailed information about this UUID
      * @returns {object} UUID information object
