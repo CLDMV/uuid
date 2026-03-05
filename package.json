@@ -35,6 +35,7 @@
 		"test:watch": "vitest --config .configs/vitest.config.mjs",
 		"coverage": "npm run test:coverage",
 		"test:coverage": "vitest run --coverage --config .configs/vitest.config.mjs",
+		"ci:coverage": "vitest run --coverage --reporter=dot --maxWorkers=1 --config .configs/vitest.ci.config.mjs",
 		"fix:headers": "node tools/fix-headers.mjs",
 		"types:build": "tsc -p .configs/tsconfig.dts.jsonc --noCheck",
 		"types:check": "tsc -p .configs/tsconfig.dts.jsonc --noEmit"
