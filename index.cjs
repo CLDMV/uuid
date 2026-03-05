@@ -1,14 +1,14 @@
 /**
- *	@Project: @cldmv/uuid
+ *	@Project: @cldmv/slothlet
  *	@Filename: /index.cjs
  *	@Date: 2025-12-15 16:18:10 -08:00 (1765844290)
  *	@Author: Nate Hyson <CLDMV>
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
- *	@Last modified by: Nate Hyson <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2025-12-15 17:12:17 -08:00 (1765847537)
+ *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
+ *	@Last modified time: 2026-03-04 21:03:43 -08:00 (1772687023)
  *	-----
- *	@Copyright: Copyright (c) 2013-2025 Catalyzed Motivation Inc. All rights reserved.
+ *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  */
 
 /**

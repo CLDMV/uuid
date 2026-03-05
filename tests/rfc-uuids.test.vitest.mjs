@@ -1,4 +1,17 @@
 /**
+ *	@Project: @cldmv/slothlet
+ *	@Filename: /tests/rfc-uuids.test.vitest.mjs
+ *	@Date: 2025-12-15T20:33:49-08:00 (1765859629)
+ *	@Author: Nate Corcoran <CLDMV>
+ *	@Email: <Shinrai@users.noreply.github.com>
+ *	-----
+ *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
+ *	@Last modified time: 2026-03-04 21:04:03 -08:00 (1772687043)
+ *	-----
+ *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
+ */
+
+/**
  * RFC UUIDs Test Suite
  *
  * Tests for RFC 4122 and RFC 9562 UUID implementations
@@ -6,8 +19,29 @@
 
 import { describe, it, expect } from "vitest";
 import { UUID } from "../index.mjs";
+import * as rfc from "../src/lib/versions/rfc/index.mjs";
+import { v1 as rawV1 } from "../src/lib/versions/rfc/v1.mjs";
+import { v3 as rawV3 } from "../src/lib/versions/rfc/v35.mjs";
+import { v6 as rawV6 } from "../src/lib/versions/rfc/v6.mjs";
 
 describe("RFC UUID Constants", () => {
+	it("should expose constants and generators through rfc index module", () => {
+		expect(rfc.NIL).toBe(UUID.NIL);
+		expect(rfc.MAX).toBe(UUID.MAX);
+		expect(rfc.DNS).toBe(UUID.DNS);
+		expect(typeof rfc.parse).toBe("function");
+		expect(typeof rfc.stringify).toBe("function");
+		expect(typeof rfc.validate).toBe("function");
+		expect(typeof rfc.version).toBe("function");
+		expect(typeof rfc.v1).toBe("function");
+		expect(typeof rfc.v3).toBe("function");
+		expect(typeof rfc.v4).toBe("function");
+		expect(typeof rfc.v5).toBe("function");
+		expect(typeof rfc.v6).toBe("function");
+		expect(typeof rfc.v7).toBe("function");
+		expect(typeof rfc.v8).toBe("function");
+	});
+
 	it("should export NIL UUID", () => {
 		expect(UUID.NIL).toBe("00000000-0000-0000-0000-000000000000");
 	});
@@ -21,6 +55,29 @@ describe("RFC UUID Constants", () => {
 		expect(UUID.URL).toBe("6ba7b811-9dad-11d1-80b4-00c04fd430c8");
 		expect(UUID.OID).toBe("6ba7b812-9dad-11d1-80b4-00c04fd430c8");
 		expect(UUID.X500).toBe("6ba7b814-9dad-11d1-80b4-00c04fd430c8");
+	});
+});
+
+describe("Direct RFC generator branch coverage", () => {
+	it("should exercise v1 with explicit nsecs and buffer output", () => {
+		const buf = new Uint8Array(32);
+		const result = rawV1({ msecs: Date.now(), nsecs: 321, buf, offset: 8 });
+		expect(result).toBe(buf);
+		expect(UUID.version(UUID.stringify(buf.slice(8, 24)))).toBe(1);
+	});
+
+	it("should exercise v3 internal return-buffer branch", () => {
+		const buf = new Uint8Array(32);
+		const result = rawV3("hello", UUID.DNS, buf, 4);
+		expect(result).toBe(buf);
+		expect(UUID.version(UUID.stringify(buf.slice(4, 20)))).toBe(3);
+	});
+
+	it("should exercise v6 with explicit options and buffer output", () => {
+		const buf = new Uint8Array(32);
+		const result = rawV6({ msecs: Date.now(), nsecs: 7, clockseq: 0x1234, node: [1, 2, 3, 4, 5, 6], buf, offset: 6 });
+		expect(result).toBe(buf);
+		expect(UUID.version(UUID.stringify(buf.slice(6, 22)))).toBe(6);
 	});
 });
 
@@ -490,6 +547,45 @@ describe("v7()", () => {
 
 		expect(result).toBe(buf);
 		expect(UUID.version(UUID.stringify(buf))).toBe(7);
+	});
+});
+
+describe("v8()", () => {
+	it("should generate valid v8 UUID string with correct bits", () => {
+		const uuid = UUID.v8();
+
+		expect(typeof uuid).toBe("string");
+		expect(UUID.validateRFC(uuid)).toBe(true);
+		expect(UUID.version(uuid)).toBe(8);
+	});
+
+	it("should use provided custom data while enforcing version and variant bits", () => {
+		const data = new Uint8Array(16).fill(0x00);
+		const uuid = UUID.v8({ data });
+		const bytes = UUID.parse(uuid);
+
+		expect(bytes[6] >> 4).toBe(8);
+		expect((bytes[8] & 0xc0) >> 6).toBe(2);
+		expect(bytes[0]).toBe(0x00);
+		expect(bytes[15]).toBe(0x00);
+	});
+
+	it("should write into provided buffer at offset and return buffer", () => {
+		const data = new Uint8Array(16);
+		for (let i = 0; i < 16; i++) {
+			data[i] = i;
+		}
+
+		const buf = new Uint8Array(32).fill(0xff);
+		const result = UUID.v8({ data, buf, offset: 8 });
+
+		expect(result).toBe(buf);
+		expect(buf[0]).toBe(0xff);
+		expect(buf[7]).toBe(0xff);
+		expect(buf[24]).toBe(0xff);
+		expect(buf[23]).toBe(15);
+		expect(buf[14] >> 4).toBe(8);
+		expect((buf[16] & 0xc0) >> 6).toBe(2);
 	});
 });
 

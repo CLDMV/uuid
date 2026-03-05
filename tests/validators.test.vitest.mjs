@@ -1,10 +1,23 @@
 /**
+ *	@Project: @cldmv/slothlet
+ *	@Filename: /tests/validators.test.vitest.mjs
+ *	@Date: 2025-12-15T20:33:49-08:00 (1765859629)
+ *	@Author: Nate Corcoran <CLDMV>
+ *	@Email: <Shinrai@users.noreply.github.com>
+ *	-----
+ *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
+ *	@Last modified time: 2026-03-04 21:04:03 -08:00 (1772687043)
+ *	-----
+ *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
+ */
+
+/**
  * Vest Test Suite for Custom UUID Validators
  *
  * Tests for specification compliance validation and error detection.
  */
 
-import { describe, test, expect } from "vitest";
+import { describe, test, expect, vi } from "vitest";
 import { UUID, ISSUER_CATEGORIES } from "../src/uuid.mjs";
 import { VARIANT_BITS, SUBVARIANT_ISSUER, SUBVARIANT_TIMESTAMP } from "../src/lib/constants.mjs";
 import { UUIDValidator } from "../src/lib/validators.mjs";
@@ -271,5 +284,119 @@ describe("UUIDValidator", () => {
 			expect(result.isValid).toBe(true);
 			expect(result.fields.version).toBe(version);
 		}
+	});
+
+	test("should capture validation errors when bit extraction throws", () => {
+		const spy = vi.spyOn(BitUtils, "getBitsAsNumber").mockImplementation(() => {
+			throw new Error("forced failure");
+		});
+
+		const result = UUIDValidator.validateCompleteUUID(Buffer.alloc(16));
+		expect(result.isValid).toBe(false);
+		expect(result.errors[0]).toContain("forced failure");
+
+		spy.mockRestore();
+	});
+
+	test("should warn for future RFC issuer range in issuer variant validation", () => {
+		ISSUER_CATEGORIES.FUTURE_RFC_START = 512;
+		ISSUER_CATEGORIES.FUTURE_RFC_END = 1023;
+
+		const uuid = UUID.createIssuerVariant(700, 1);
+		const result = UUIDValidator.validateCompleteUUID(uuid.toBuffer());
+		expect(result.fields.categoryValidation).toBe("Future RFC Expansion");
+		expect(result.warnings.some((warning) => warning.includes("future RFC expansion range"))).toBe(true);
+	});
+
+	test("should include bit layout validation error when extraction fails", () => {
+		const spy = vi.spyOn(BitUtils, "getBitsAsNumber").mockImplementation(() => {
+			throw new Error("layout fail");
+		});
+
+		const result = UUIDValidator.validateBitLayout(Buffer.alloc(16));
+		expect(result.isValid).toBe(false);
+		expect(result.errors[0]).toContain("layout fail");
+
+		spy.mockRestore();
+	});
+
+	test("should record invalid subvariant and version via mocked out-of-range extracts", () => {
+		const spy = vi.spyOn(BitUtils, "getBitsAsNumber").mockImplementation((buffer, start, length) => {
+			if (start === 64 && length === 3) return VARIANT_BITS;
+			if (start === 67 && length === 2) return 4;
+			if (start === 75 && length === 4) return 16;
+			return 0;
+		});
+
+		const result = UUIDValidator.validateCompleteUUID(Buffer.alloc(16));
+		expect(result.errors.some((error) => error.includes("Invalid subvariant"))).toBe(true);
+		expect(result.errors.some((error) => error.includes("Invalid version"))).toBe(true);
+
+		spy.mockRestore();
+	});
+
+	test("should record invalid issuer ID via mocked out-of-range extract", () => {
+		const spy = vi.spyOn(BitUtils, "getBitsAsNumber").mockImplementation((buffer, start, length) => {
+			if (start === 64 && length === 3) return VARIANT_BITS;
+			if (start === 67 && length === 2) return SUBVARIANT_ISSUER;
+			if (start === 75 && length === 4) return 1;
+			if (start === 79 && length === 10) return 1024;
+			return 0;
+		});
+
+		const result = UUIDValidator.validateCompleteUUID(Buffer.alloc(16));
+		expect(result.errors.some((error) => error.includes("Invalid issuer ID"))).toBe(true);
+
+		spy.mockRestore();
+	});
+
+	test("should record invalid bit layout fields via mocked out-of-range extracts", () => {
+		const spy = vi.spyOn(BitUtils, "getBitsAsNumber").mockImplementation((buffer, start, length) => {
+			if (start === 64 && length === 3) return VARIANT_BITS;
+			if (start === 67 && length === 2) return 5;
+			if (start === 75 && length === 4) return 17;
+			if (start === 0 && length === 1) return 1;
+			if (start === 69 && length === 6) return 0;
+			return 0;
+		});
+		const bitsSpy = vi.spyOn(BitUtils, "getBits").mockReturnValue(0n);
+
+		const result = UUIDValidator.validateBitLayout(Buffer.alloc(16));
+		expect(result.errors.some((error) => error.includes("Subvariant"))).toBe(true);
+		expect(result.errors.some((error) => error.includes("Version"))).toBe(true);
+
+		bitsSpy.mockRestore();
+		spy.mockRestore();
+	});
+
+	test("should record invalid issuer ID in bit layout when issuer subvariant is selected", () => {
+		const spy = vi.spyOn(BitUtils, "getBitsAsNumber").mockImplementation((buffer, start, length) => {
+			if (start === 64 && length === 3) return VARIANT_BITS;
+			if (start === 67 && length === 2) return SUBVARIANT_ISSUER;
+			if (start === 75 && length === 4) return 1;
+			if (start === 79 && length === 10) return 2048;
+			if (start === 0 && length === 1) return 1;
+			if (start === 69 && length === 6) return 0;
+			return 0;
+		});
+		const bitsSpy = vi.spyOn(BitUtils, "getBits").mockReturnValue(0n);
+
+		const result = UUIDValidator.validateBitLayout(Buffer.alloc(16));
+		expect(result.errors.some((error) => error.includes("Issuer ID"))).toBe(true);
+
+		bitsSpy.mockRestore();
+		spy.mockRestore();
+	});
+
+	test("should skip entropy balance analysis when no mutable bits are available", () => {
+		const originalAlloc = Buffer.alloc;
+		const allocSpy = vi.spyOn(Buffer, "alloc").mockImplementation((size) => originalAlloc(size, 0xff));
+
+		const result = UUIDValidator.validateEntropy(Buffer.alloc(16, 0));
+		expect(result.analysis.bitBalance).toBeUndefined();
+		expect(result.warnings.includes("All entropy bits are zero")).toBe(false);
+		expect(result.warnings.includes("All entropy bits are one")).toBe(false);
+
+		allocSpy.mockRestore();
 	});
 });

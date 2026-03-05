@@ -1,4 +1,17 @@
 /**
+ *	@Project: @cldmv/slothlet
+ *	@Filename: /tests/bit-utils.test.vitest.mjs
+ *	@Date: 2025-12-15T20:33:49-08:00 (1765859629)
+ *	@Author: Nate Corcoran <CLDMV>
+ *	@Email: <Shinrai@users.noreply.github.com>
+ *	-----
+ *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
+ *	@Last modified time: 2026-03-04 21:04:02 -08:00 (1772687042)
+ *	-----
+ *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
+ */
+
+/**
  * Vitest Test Suite for Bit Manipulation Utilities
  *
  * Comprehensive tests for the BitUtils class covering all bit manipulation operations.
@@ -195,5 +208,23 @@ describe("BitUtils", () => {
 		expect(fields.variant).toBe(7);
 		expect(fields.subvariant).toBe(1);
 		expect(fields.version).toBe(5);
+	});
+
+	test("should throw on invalid ranges and positions in getter/validators", () => {
+		const buffer = Buffer.alloc(2, 0);
+		expect(() => BitUtils.validateBitPosition(buffer, 0)).not.toThrow();
+		expect(() => BitUtils.getBits(buffer, -1, 1)).toThrow(/Invalid bit range/);
+		expect(() => BitUtils.getBits(buffer, 0, 17)).toThrow(/Invalid bit range/);
+		expect(() => BitUtils.validateBitPosition(buffer, 16)).toThrow(/out of range/);
+		expect(() => BitUtils.validateBitPosition(buffer, -1)).toThrow(/out of range/);
+	});
+
+	test("should throw for invalid masks and binary lengths", () => {
+		const short = Buffer.alloc(1, 0xff);
+		const long = Buffer.alloc(2, 0xff);
+		expect(() => BitUtils.createBitMask(8, [8])).toThrow(/out of range/);
+		expect(() => BitUtils.applyMask(short, long)).toThrow(/same length/);
+		expect(() => BitUtils.applyInvertedMask(short, long)).toThrow(/same length/);
+		expect(() => BitUtils.fromBinaryString("1010", 2)).toThrow(/doesn't match expected/);
 	});
 });

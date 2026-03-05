@@ -33,7 +33,9 @@
 		"demo": "node scripts/demo-custom-uuids.mjs",
 		"test": "vitest run --config .configs/vitest.config.mjs",
 		"test:watch": "vitest --config .configs/vitest.config.mjs",
-		"test:coverage": "vitest run --coverage --config .configs/vitest.config.mjs"
+		"coverage": "npm run test:coverage",
+		"test:coverage": "vitest run --coverage --config .configs/vitest.config.mjs",
+		"fix:headers": "node tools/fix-headers.mjs"
 	},
 	"keywords": [
 		"uuid",
@@ -89,7 +91,9 @@
 	],
 	"sideEffects": false,
 	"devDependencies": {
+		"@cldmv/fix-headers": "^1.2.2",
+		"@vitest/coverage-v8": "^4.0.18",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.15"
+		"vitest": "^4.0.18"
 	}
 }
