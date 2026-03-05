@@ -36,8 +36,8 @@
 		"coverage": "npm run test:coverage",
 		"test:coverage": "vitest run --coverage --config .configs/vitest.config.mjs",
 		"fix:headers": "node tools/fix-headers.mjs",
-		"types:build": "tsc -p .configs/tsconfig.json --noCheck",
-		"types:check": "tsc -p .configs/tsconfig.json --noEmit"
+		"types:build": "tsc -p .configs/tsconfig.dts.jsonc --noCheck",
+		"types:check": "tsc -p .configs/tsconfig.dts.jsonc --noEmit"
 	},
 	"keywords": [
 		"uuid",
