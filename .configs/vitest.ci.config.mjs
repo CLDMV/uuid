@@ -33,6 +33,13 @@ export default {
 		// CI: no file-level parallelism either (hard clamp)
 		maxWorkers: 1,
 		minWorkers: 1,
-		fileParallelism: false
+		fileParallelism: false,
+
+		coverage: {
+			enabled: true,
+			provider: "v8",
+			reporter: ["text", "html", "json-summary"],
+			reportsDirectory: "coverage"
+		}
 	}
 };
