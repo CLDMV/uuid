@@ -2,8 +2,9 @@
 
 Extended UUID specification designed for RFC inclusion, formally extending RFC 4122/9562 with custom variant structures for issuer-based identification and enhanced timestamp variants.
 
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.12-brightgreen.svg)](https://nodejs.org)
+[![npm version]][npm_version_url] [![npm downloads]][npm_downloads_url] <!-- [![GitHub release]][github_release_url] -->[![GitHub downloads]][github_downloads_url] [![Last commit]][last_commit_url] <!-- [![Release date]][release_date_url] -->[![npm last update]][npm_last_update_url] [![Coverage]][coverage_url]
+
+[![Contributors]][contributors_url] [![Sponsor shinrai]][sponsor_url]
 
 ## Overview
 
@@ -1036,3 +1037,26 @@ See [CHANGELOG.md](CHANGELOG.md) for version history and specification evolution
 **Specification Status**: Implementation complete, designed for RFC submission.
 
 Made with ❤️ by [CLDMV](https://cldmv.net)
+
+<!-- Badge definitions -->
+<!-- [github release]: https://img.shields.io/github/v/release/CLDMV/uuid?style=for-the-badge&logo=github&logoColor=white&labelColor=181717 -->
+<!-- [github_release_url]: https://github.com/CLDMV/uuid/releases -->
+<!-- [release date]: https://img.shields.io/github/release-date/CLDMV/uuid?style=for-the-badge&logo=github&logoColor=white&labelColor=181717 -->
+<!-- [release_date_url]: https://github.com/CLDMV/uuid/releases -->
+
+[npm version]: https://img.shields.io/npm/v/%40cldmv%2Fuuid.svg?style=for-the-badge&logo=npm&logoColor=white&labelColor=CB3837
+[npm_version_url]: https://www.npmjs.com/package/@cldmv/uuid
+[npm downloads]: https://img.shields.io/npm/dm/%40cldmv%2Fuuid.svg?style=for-the-badge&logo=npm&logoColor=white&labelColor=CB3837
+[npm_downloads_url]: https://www.npmjs.com/package/@cldmv/uuid
+[github downloads]: https://img.shields.io/github/downloads/CLDMV/uuid/total?style=for-the-badge&logo=github&logoColor=white&labelColor=181717
+[github_downloads_url]: https://github.com/CLDMV/uuid/releases
+[last commit]: https://img.shields.io/github/last-commit/CLDMV/uuid?style=for-the-badge&logo=github&logoColor=white&labelColor=181717
+[last_commit_url]: https://github.com/CLDMV/uuid/commits
+[npm last update]: https://img.shields.io/npm/last-update/%40cldmv%2Fuuid?style=for-the-badge&logo=npm&logoColor=white&labelColor=CB3837
+[npm_last_update_url]: https://www.npmjs.com/package/@cldmv/uuid
+[coverage]: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FCLDMV%2Fuuid%2Fbadges%2Fcoverage.json&style=for-the-badge&logo=vitest&logoColor=white
+[coverage_url]: https://github.com/CLDMV/uuid/blob/badges/coverage.json
+[contributors]: https://img.shields.io/github/contributors/CLDMV/uuid.svg?style=for-the-badge&logo=github&logoColor=white&labelColor=181717
+[contributors_url]: https://github.com/CLDMV/uuid/graphs/contributors
+[sponsor shinrai]: https://img.shields.io/github/sponsors/shinrai?style=for-the-badge&logo=githubsponsors&logoColor=white&labelColor=EA4AAA&label=Sponsor
+[sponsor_url]: https://github.com/sponsors/shinrai
