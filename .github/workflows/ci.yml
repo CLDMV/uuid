@@ -47,7 +47,8 @@ jobs:
               run: |
                   node -e "
                     const s = JSON.parse(require('fs').readFileSync('coverage/coverage-summary.json','utf8')).total;
-                    const avg = ((s.statements.pct + s.branches.pct + s.functions.pct + s.lines.pct) / 4).toFixed(1);
+                    const safePct = m => m.total === 0 ? 100 : m.pct;
+                    const avg = ((safePct(s.statements) + safePct(s.branches) + safePct(s.functions) + safePct(s.lines)) / 4).toFixed(1);
                     const color = avg >= 90 ? 'brightgreen' : avg >= 75 ? 'green' : avg >= 60 ? 'yellow' : 'red';
                     require('fs').writeFileSync('badge.json', JSON.stringify({schemaVersion:1,label:'coverage',message:avg+'%',color}));
                     console.log('Coverage avg:', avg+'%');

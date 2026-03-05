@@ -39,7 +39,14 @@ export default {
 			enabled: true,
 			provider: "v8",
 			reporter: ["text", "html", "json-summary"],
-			reportsDirectory: "coverage"
+			reportsDirectory: "coverage",
+			exclude: [
+				"index.mjs", // re-export entry point, not exercised by tests (uuid-dev condition bypasses it)
+				"index.cjs",
+				"devcheck.mjs",
+				"scripts/**",
+				"tools/**"
+			]
 		}
 	}
 };
