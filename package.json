@@ -1,6 +1,6 @@
 {
 	"name": "@cldmv/uuid",
-	"version": "1.1.2",
+	"version": "1.1.3",
 	"description": "Extended RFC 4122 and RFC 9562 UUID implementation with custom variant structures, issuer-based identification, and timestamp variants",
 	"main": "./index.cjs",
 	"module": "./index.mjs",
@@ -28,14 +28,14 @@
 	},
 	"scripts": {
 		"build": "npm run build:dist && npm run build:types",
+		"build:ci": "npm run build",
 		"build:dist": "node -e \"const fs = require('fs'); const path = require('path'); fs.rmSync('dist', {recursive: true, force: true}); fs.mkdirSync('dist', {recursive: true}); fs.cpSync('src', 'dist', {recursive: true});\"",
 		"build:types": "node -e \"require('fs').rmSync('types', {recursive: true, force: true})\" && tsc --project .configs/tsconfig.dts.jsonc",
 		"demo": "node scripts/demo-custom-uuids.mjs",
-		"test": "vitest run --config .configs/vitest.config.mjs",
+		"test": "node tests/run-vitest.mjs",
 		"test:watch": "vitest --config .configs/vitest.config.mjs",
-		"coverage": "npm run test:coverage",
-		"test:coverage": "vitest run --coverage --config .configs/vitest.config.mjs",
-		"ci:coverage": "vitest run --coverage --reporter=dot --maxWorkers=1 --config .configs/vitest.ci.config.mjs",
+		"coverage": "node tests/run-vitest.mjs --coverage-quiet",
+		"ci:coverage": "npm run coverage",
 		"fix:headers": "node tools/fix-headers.mjs",
 		"types:build": "tsc -p .configs/tsconfig.dts.jsonc --noCheck",
 		"types:check": "tsc -p .configs/tsconfig.dts.jsonc --noEmit"
@@ -95,8 +95,9 @@
 	"sideEffects": false,
 	"devDependencies": {
 		"@cldmv/fix-headers": "^1.2.2",
-		"@vitest/coverage-v8": "^4.0.18",
+		"@cldmv/vitest-runner": "^1.2.0",
+		"@vitest/coverage-v8": "^4.1.10",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.18"
+		"vitest": "^4.1.10"
 	}
 }

@@ -38,15 +38,18 @@ export default {
 		coverage: {
 			enabled: true,
 			provider: "v8",
-			reporter: ["text", "html", "json-summary"],
-			reportsDirectory: "coverage",
+			// Real source only. index.mjs and devcheck.mjs ARE exercised (rfc-uuids.test.vitest.mjs
+			// imports ../index.mjs; uuid-coverage.test.vitest.mjs drives devcheck.mjs's CI/dev-env
+			// branches directly), so they're measured. index.cjs (the CJS entry wrapper) is
+			// deliberately omitted — no require()-based test currently exercises it.
+			include: ["src/**", "index.mjs", "devcheck.mjs"],
 			exclude: [
-				"index.mjs", // re-export entry point, not exercised by tests (uuid-dev condition bypasses it)
-				"index.cjs",
-				"devcheck.mjs",
+				"src/data/**", // static JSON data, no executable logic
 				"scripts/**",
 				"tools/**"
-			]
+			],
+			reporter: ["text", "html", "json-summary"],
+			reportsDirectory: "coverage"
 		}
 	}
 };
