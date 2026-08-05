@@ -97,7 +97,7 @@
 		"@cldmv/fix-headers": "^1.2.2",
 		"@cldmv/vitest-runner": "^1.2.0",
 		"@vitest/coverage-v8": "^4.1.10",
-		"typescript": "^5.9.3",
+		"typescript": "^7.0.2",
 		"vitest": "^4.1.10"
 	}
 }
