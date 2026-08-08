@@ -87,6 +87,17 @@ describe("devcheck", () => {
 		expect(status).toBe(1);
 	});
 
+	test("does NOT match a condition that merely contains 'uuid-dev' as a substring", () => {
+		// Exact-value match, not substring: --conditions=not-uuid-dev must NOT silence it.
+		const { status } = runDevcheck({ src: true }, { nodeArgs: ["--conditions=not-uuid-dev"] });
+		expect(status).toBe(1);
+	});
+
+	test("accepts uuid-dev among comma-separated conditions", () => {
+		const { status } = runDevcheck({ src: true }, { nodeArgs: ["--conditions=foo,uuid-dev,bar"] });
+		expect(status).toBe(0);
+	});
+
 	test("skips in CI", () => {
 		const { status, stderr } = runDevcheck({ src: true }, { env: { CI: "true" } });
 		expect(status).toBe(0);
