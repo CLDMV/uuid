@@ -1,4 +1,17 @@
 /**
+ *	@Project: @cldmv/uuid
+ *	@Filename: /tests/run-vitest.mjs
+ *	@Date: 2026-08-02T23:29:33-07:00 (1785738573)
+ *	@Author: Shinrai <CLDMV>
+ *	@Email: <Shinrai@users.noreply.github.com>
+ *	-----
+ *	@Last modified by: Shinrai <CLDMV> (Shinrai@users.noreply.github.com)
+ *	@Last modified time: 2026-08-08 17:13:20 -07:00 (1786234400)
+ *	-----
+ *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
+ */
+
+/**
  * @fileoverview OOM-safe Vitest runner for uuid — delegates to @cldmv/vitest-runner,
  * which spawns each test file in its own child process and (under coverage) uses a
  * blob-per-file + `--mergeReports` strategy so a single process never holds coverage
