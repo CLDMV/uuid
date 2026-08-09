@@ -1,3 +1,16 @@
+/**
+ *	@Project: @cldmv/slothlet
+ *	@Filename: /tests/DevCheck.test.vitest.mjs
+ *	@Date: 2026-08-08T00:00:00-08:00 (1786233600)
+ *	@Author: Nate Corcoran <CLDMV>
+ *	@Email: <Shinrai@users.noreply.github.com>
+ *	-----
+ *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
+ *	@Last modified time: 2026-08-08T00:00:00-08:00 (1786233600)
+ *	-----
+ *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
+ */
+
 import { test, expect, describe, beforeAll, afterAll } from "vitest";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, copyFileSync, rmSync } from "node:fs";
@@ -61,11 +74,22 @@ describe("devcheck", () => {
 		expect(stderr).toBe("");
 	});
 
-	test("stays silent when the condition is passed on the node CLI (execArgv)", () => {
+	test("stays silent when the condition is passed on the node CLI (execArgv, = form)", () => {
 		// vitest passes --conditions to workers this way, so devcheck must detect it here too.
 		const { status, stderr } = runDevcheck({ src: true }, { nodeArgs: ["--conditions=uuid-dev"] });
 		expect(status).toBe(0);
 		expect(stderr).toBe("");
+	});
+
+	test("stays silent when the condition is passed space-separated (--conditions uuid-dev)", () => {
+		const { status, stderr } = runDevcheck({ src: true }, { nodeArgs: ["--conditions", "uuid-dev"] });
+		expect(status).toBe(0);
+		expect(stderr).toBe("");
+	});
+
+	test("stays silent when uuid-dev is one of several repeated --conditions flags", () => {
+		const { status } = runDevcheck({ src: true }, { nodeArgs: ["--conditions=foo", "--conditions=uuid-dev"] });
+		expect(status).toBe(0);
 	});
 
 	test("NODE_ENV=development alone does NOT silence it (only the condition selects src/)", () => {
@@ -93,9 +117,18 @@ describe("devcheck", () => {
 		expect(status).toBe(1);
 	});
 
-	test("accepts uuid-dev among comma-separated conditions", () => {
+	test("does NOT treat a comma-joined value as separate conditions", () => {
+		// Node does not split --conditions on `,`: `foo,uuid-dev,bar` is one literal
+		// condition, so uuid-dev is NOT enabled and devcheck must still nag.
 		const { status } = runDevcheck({ src: true }, { nodeArgs: ["--conditions=foo,uuid-dev,bar"] });
-		expect(status).toBe(0);
+		expect(status).toBe(1);
+	});
+
+	test("does NOT treat a pipe-joined value as separate conditions", () => {
+		// Likewise Node does not split on `|` (it's a valid condition character, e.g.
+		// Vite's `development|production`): `uuid-dev|production` does not enable uuid-dev.
+		const { status } = runDevcheck({ src: true }, { nodeArgs: ["--conditions=uuid-dev|production"] });
+		expect(status).toBe(1);
 	});
 
 	test("skips in CI", () => {
