@@ -16,7 +16,8 @@
 				"import": "./src/uuid.mjs"
 			},
 			"import": "./dist/uuid.mjs"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"type": "module",
 	"engines": {
