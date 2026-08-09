@@ -85,7 +85,7 @@ function buildOptions(parsed) {
 	return {
 		cwd: projectRoot,
 		dryRun: parsed.dryRun,
-		projectName: "@cldmv/slothlet",
+		projectName: "@cldmv/uuid",
 		company: "CLDMV",
 		companyName: "Catalyzed Motivation Inc.",
 		copyrightStartYear: 2013,

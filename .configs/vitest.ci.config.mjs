@@ -1,14 +1,14 @@
 /**
- *	@Project: @cldmv/fix-headers
+ *	@Project: @cldmv/uuid
  *	@Filename: /.configs/vitest.ci.config.mjs
  *	@Date: 2026-02-25 17:34:15 -08:00 (1772069655)
  *	@Author: Nate Corcoran <CLDMV>
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
- *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-03-01T17:59:32-08:00 (1772416772)
+ *	@Last modified by: Shinrai <CLDMV> (Shinrai@users.noreply.github.com)
+ *	@Last modified time: 2026-08-08 17:13:20 -07:00 (1786234400)
  *	-----
- *	@Copyright: Copyright (c) 2026-2026 Catalyzed Motivation Inc. All rights reserved.
+ *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  */
 
 import base from "./vitest.config.mjs";
