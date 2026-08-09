@@ -83,7 +83,7 @@ if (existsSync(srcPath) && !isCI && !isInstalledPackage) {
 	if (!hasUUIDDev) {
 		console.error("❌ Development environment not properly configured!");
 		console.error("📁 Source folder detected but the 'uuid-dev' condition is not set,");
-		console.error("   so UUID is loading from dist/ instead of src/.");
+		console.error("   so imports resolve to dist/ by default (or fail if it isn't built) instead of src/.");
 		console.error("");
 		console.error("🔧 To load from src/ for development, set the condition:");
 		console.error("   Windows (cmd):");
