@@ -17,6 +17,30 @@
 			},
 			"import": "./dist/uuid.mjs"
 		},
+		"./rng": {
+			"uuid-dev": {
+				"browser": "./src/lib/rng-browser.mjs",
+				"import": "./src/lib/rng.mjs"
+			},
+			"browser": "./dist/lib/rng-browser.mjs",
+			"import": "./dist/lib/rng.mjs"
+		},
+		"./bytes": {
+			"uuid-dev": {
+				"browser": "./src/lib/bytes-browser.mjs",
+				"import": "./src/lib/bytes.mjs"
+			},
+			"browser": "./dist/lib/bytes-browser.mjs",
+			"import": "./dist/lib/bytes.mjs"
+		},
+		"./hash": {
+			"uuid-dev": {
+				"browser": "./src/lib/hash-browser.mjs",
+				"import": "./src/lib/hash.mjs"
+			},
+			"browser": "./dist/lib/hash-browser.mjs",
+			"import": "./dist/lib/hash.mjs"
+		},
 		"./package.json": "./package.json"
 	},
 	"type": "module",

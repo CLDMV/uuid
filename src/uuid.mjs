@@ -24,7 +24,8 @@
  * - issuer ID (bits 79-88): 10-bit issuer identification (Issuer Variant only)
  */
 
-import crypto from "crypto";
+import { randomBytes } from "@cldmv/uuid/rng";
+import { toHex, fromHex, toBufferLike } from "@cldmv/uuid/bytes";
 import { BitUtils } from "./lib/bit-utils.mjs";
 import {
 	VARIANT_BITS,
@@ -47,10 +48,10 @@ import * as rfcUuids from "./lib/versions/rfc/index.mjs";
 class UUID {
 	/**
 	 * Create a new UUID instance
-	 * @param {Buffer|string|null} data - Optional UUID data to parse
+	 * @param {Uint8Array|string|null} data - Optional UUID data to parse
 	 */
 	constructor(data = null) {
-		this._buffer = Buffer.alloc(16);
+		this._buffer = new Uint8Array(16);
 
 		if (data !== null && data !== undefined) {
 			this._parseFromData(data);
@@ -59,7 +60,7 @@ class UUID {
 
 	/**
 	 * Parse UUID from existing data
-	 * @param {Buffer|string} data - UUID data to parse
+	 * @param {Uint8Array|string} data - UUID data to parse
 	 * @private
 	 */
 	_parseFromData(data) {
@@ -69,12 +70,12 @@ class UUID {
 			if (hex.length !== 32) {
 				throw new Error("Invalid UUID string length");
 			}
-			this._buffer = Buffer.from(hex, "hex");
-		} else if (Buffer.isBuffer(data)) {
+			this._buffer = fromHex(hex);
+		} else if (data instanceof Uint8Array) {
 			if (data.length !== 16) {
 				throw new Error("Invalid UUID buffer length");
 			}
-			this._buffer = Buffer.from(data);
+			this._buffer = new Uint8Array(data);
 		} else {
 			throw new Error("Invalid UUID data type");
 		}
@@ -84,7 +85,7 @@ class UUID {
 	 * Create a new Issuer Variant UUID
 	 * @param {number} issuerID - Issuer ID (0-ISSUER_ID_MASK)
 	 * @param {number} version - Version number
-	 * @param {Buffer} entropy - Additional entropy data
+	 * @param {Uint8Array} entropy - Additional entropy data
 	 * @returns {UUID} New UUID instance
 	 */
 	static createIssuerVariant(issuerID, version, entropy = null) {
@@ -109,7 +110,7 @@ class UUID {
 
 		// Fill remaining bits with entropy
 		if (!entropy) {
-			entropy = crypto.randomBytes(16);
+			entropy = randomBytes(16);
 		}
 		uuid._fillEntropy(entropy);
 
@@ -120,7 +121,7 @@ class UUID {
 	 * Create a new Timestamp Variant UUID
 	 * @param {number|Date} timestamp - Timestamp value (optional, defaults to Date.now())
 	 * @param {number} version - Version number
-	 * @param {Buffer} entropy - Optional entropy for bits 79-127
+	 * @param {Uint8Array} entropy - Optional entropy for bits 79-127
 	 * @returns {UUID} New UUID instance
 	 */
 	static createTimestampVariant(timestamp, version, entropy = null) {
@@ -160,7 +161,7 @@ class UUID {
 
 		// Fill entropy bits (79-127) if provided, or generate random entropy
 		if (!entropy) {
-			entropy = crypto.randomBytes(16);
+			entropy = randomBytes(16);
 		}
 
 		// Copy entropy starting from bit 79 (byte 9, bit 7)
@@ -189,7 +190,7 @@ class UUID {
 	 * Create an issuer-based UUID (short name alias)
 	 * @param {number} issuerID - Issuer ID (0-1023)
 	 * @param {number} version - Version number
-	 * @param {Buffer} entropy - Additional entropy data
+	 * @param {Uint8Array} entropy - Additional entropy data
 	 * @returns {UUID} New UUID instance
 	 */
 	static issuer(issuerID, version, entropy = null) {
@@ -200,7 +201,7 @@ class UUID {
 	 * Create a timestamp-based UUID (short name alias)
 	 * @param {number|Date} timestamp - Timestamp value (optional, defaults to Date.now())
 	 * @param {number} version - Version number
-	 * @param {Buffer} entropy - Optional entropy for bits 79-127
+	 * @param {Uint8Array} entropy - Optional entropy for bits 79-127
 	 * @returns {UUID} New UUID instance
 	 */
 	static timestamp(timestamp, version, entropy = null) {
@@ -211,7 +212,7 @@ class UUID {
 	 * Create Timestamp Variant v1 UUID (ultra-short alias)
 	 * Subvariant 00 - Timestamp-based identification (seconds precision)
 	 * @param {number|Date} timestamp - Timestamp value (optional, defaults to Date.now())
-	 * @param {Buffer} entropy - Optional entropy for bits 79-127
+	 * @param {Uint8Array} entropy - Optional entropy for bits 79-127
 	 * @returns {UUID} New UUID instance
 	 */
 	static TA(timestamp, entropy = null) {
@@ -222,7 +223,7 @@ class UUID {
 	 * Create Issuer Variant v1 UUID (ultra-short alias)
 	 * Subvariant 01 - Issuer-based identification
 	 * @param {number} issuerID - Issuer ID (0-1023)
-	 * @param {Buffer} entropy - Additional entropy data
+	 * @param {Uint8Array} entropy - Additional entropy data
 	 * @returns {UUID} New UUID instance
 	 */
 	static IA(issuerID, entropy = null) {
@@ -233,7 +234,7 @@ class UUID {
 	 * Create Timestamp Variant v2 UUID (ultra-short alias)
 	 * Subvariant 00 - Timestamp-based identification (milliseconds precision)
 	 * @param {number|Date} timestamp - Timestamp value (optional, defaults to Date.now())
-	 * @param {Buffer} entropy - Optional entropy for bits 79-127
+	 * @param {Uint8Array} entropy - Optional entropy for bits 79-127
 	 * @returns {UUID} New UUID instance
 	 */
 	static TB(timestamp, entropy = null) {
@@ -283,7 +284,7 @@ class UUID {
 
 	/**
 	 * Fill remaining bits with entropy while preserving immutable fields
-	 * @param {Buffer} entropy - Entropy data
+	 * @param {Uint8Array} entropy - Entropy data
 	 * @private
 	 */
 	_fillEntropy(entropy) {
@@ -294,7 +295,7 @@ class UUID {
 		const issuerID = this.getIssuerID();
 
 		// Apply entropy to entire buffer
-		entropy.copy(this._buffer);
+		this._buffer.set(entropy);
 
 		// Restore immutable fields with saved values
 		this._setVariant(variant);
@@ -523,16 +524,16 @@ class UUID {
 	 * @returns {string} UUID string with dashes
 	 */
 	toString() {
-		const hex = this._buffer.toString("hex");
+		const hex = toHex(this._buffer);
 		return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 	}
 
 	/**
 	 * Convert UUID to buffer
-	 * @returns {Buffer} UUID as 16-byte buffer
+	 * @returns {Buffer} UUID as 16-byte buffer (Node); a Uint8Array copy in environments without Buffer
 	 */
 	toBuffer() {
-		return Buffer.from(this._buffer);
+		return toBufferLike(this._buffer);
 	}
 
 	/**
@@ -648,7 +649,7 @@ class UUID {
 
 	/**
 	 * Validate a UUID buffer for specification compliance
-	 * @param {Buffer} buffer - UUID buffer to validate
+	 * @param {Uint8Array} buffer - UUID buffer to validate
 	 * @returns {Promise<object>} Validation results
 	 */
 	static async validate(buffer) {
@@ -658,7 +659,7 @@ class UUID {
 
 	/**
 	 * Generate a complete validation report for a UUID
-	 * @param {Buffer} buffer - UUID buffer to validate
+	 * @param {Uint8Array} buffer - UUID buffer to validate
 	 * @returns {Promise<object>} Detailed validation report
 	 */
 	static async validateDetailed(buffer) {
