@@ -18,7 +18,7 @@
  * Version 5: SHA-1-based namespace UUID
  */
 
-import crypto from "crypto";
+import { md5, sha1 } from "@cldmv/uuid/hash";
 import { parse, stringify } from "./utils.mjs";
 
 /**
@@ -26,13 +26,13 @@ import { parse, stringify } from "./utils.mjs";
  * @param {string} name - Name to hash
  * @param {string|Uint8Array} namespace - Namespace UUID
  * @param {number} versionByte - Version byte (0x30 for v3, 0x50 for v5)
- * @param {Object} hasher - Crypto hash instance
+ * @param {Function} hashFn - Isomorphic hash function (md5 or sha1), signature (namespaceBytes, name)
  * @param {Uint8Array} buf - Optional buffer to write into
  * @param {number} offset - Optional offset in buffer
  * @returns {string|Uint8Array} UUID string or buffer
  * @private
  */
-function _v35(name, namespace, versionByte, hasher, buf, offset) {
+function _v35(name, namespace, versionByte, hashFn, buf, offset) {
 	const _buf = buf || new Uint8Array(16);
 	const _offset = offset || 0;
 
@@ -45,9 +45,7 @@ function _v35(name, namespace, versionByte, hasher, buf, offset) {
 	}
 
 	// Hash namespace + name
-	hasher.update(Buffer.from(namespaceBytes));
-	hasher.update(name, "utf8");
-	const hash = hasher.digest();
+	const hash = hashFn(namespaceBytes, name);
 
 	// Copy first 16 bytes of hash to buffer
 	for (let i = 0; i < 16; i++) {
@@ -72,7 +70,7 @@ function _v35(name, namespace, versionByte, hasher, buf, offset) {
  * @returns {string|Uint8Array} UUID string or buffer
  */
 export function v3(name, namespace, buf, offset) {
-	return _v35(name, namespace, 0x30, crypto.createHash("md5"), buf, offset);
+	return _v35(name, namespace, 0x30, md5, buf, offset);
 }
 
 /**
@@ -84,5 +82,5 @@ export function v3(name, namespace, buf, offset) {
  * @returns {string|Uint8Array} UUID string or buffer
  */
 export function v5(name, namespace, buf, offset) {
-	return _v35(name, namespace, 0x50, crypto.createHash("sha1"), buf, offset);
+	return _v35(name, namespace, 0x50, sha1, buf, offset);
 }

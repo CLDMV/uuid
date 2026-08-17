@@ -389,10 +389,12 @@ describe("UUIDValidator", () => {
 	});
 
 	test("should skip entropy balance analysis when no mutable bits are available", () => {
-		const originalAlloc = Buffer.alloc;
-		const allocSpy = vi.spyOn(Buffer, "alloc").mockImplementation((size) => originalAlloc(size, 0xff));
+		const RealUint8Array = Uint8Array;
+		const allocSpy = vi.spyOn(globalThis, "Uint8Array").mockImplementation(function (arg) {
+			return new RealUint8Array(arg).fill(0xff);
+		});
 
-		const result = UUIDValidator.validateEntropy(Buffer.alloc(16, 0));
+		const result = UUIDValidator.validateEntropy(new RealUint8Array(16));
 		expect(result.analysis.bitBalance).toBeUndefined();
 		expect(result.warnings.includes("All entropy bits are zero")).toBe(false);
 		expect(result.warnings.includes("All entropy bits are one")).toBe(false);

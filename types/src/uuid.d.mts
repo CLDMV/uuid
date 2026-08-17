@@ -6,58 +6,58 @@ export class UUID {
      * Create a new Issuer Variant UUID
      * @param {number} issuerID - Issuer ID (0-ISSUER_ID_MASK)
      * @param {number} version - Version number
-     * @param {Buffer} entropy - Additional entropy data
+     * @param {Uint8Array} entropy - Additional entropy data
      * @returns {UUID} New UUID instance
      */
-    static createIssuerVariant(issuerID: number, version: number, entropy?: Buffer): UUID;
+    static createIssuerVariant(issuerID: number, version: number, entropy?: Uint8Array): UUID;
     /**
      * Create a new Timestamp Variant UUID
      * @param {number|Date} timestamp - Timestamp value (optional, defaults to Date.now())
      * @param {number} version - Version number
-     * @param {Buffer} entropy - Optional entropy for bits 79-127
+     * @param {Uint8Array} entropy - Optional entropy for bits 79-127
      * @returns {UUID} New UUID instance
      */
-    static createTimestampVariant(timestamp: number | Date, version: number, entropy?: Buffer): UUID;
+    static createTimestampVariant(timestamp: number | Date, version: number, entropy?: Uint8Array): UUID;
     /**
      * Create an issuer-based UUID (short name alias)
      * @param {number} issuerID - Issuer ID (0-1023)
      * @param {number} version - Version number
-     * @param {Buffer} entropy - Additional entropy data
+     * @param {Uint8Array} entropy - Additional entropy data
      * @returns {UUID} New UUID instance
      */
-    static issuer(issuerID: number, version: number, entropy?: Buffer): UUID;
+    static issuer(issuerID: number, version: number, entropy?: Uint8Array): UUID;
     /**
      * Create a timestamp-based UUID (short name alias)
      * @param {number|Date} timestamp - Timestamp value (optional, defaults to Date.now())
      * @param {number} version - Version number
-     * @param {Buffer} entropy - Optional entropy for bits 79-127
+     * @param {Uint8Array} entropy - Optional entropy for bits 79-127
      * @returns {UUID} New UUID instance
      */
-    static timestamp(timestamp: number | Date, version: number, entropy?: Buffer): UUID;
+    static timestamp(timestamp: number | Date, version: number, entropy?: Uint8Array): UUID;
     /**
      * Create Timestamp Variant v1 UUID (ultra-short alias)
      * Subvariant 00 - Timestamp-based identification (seconds precision)
      * @param {number|Date} timestamp - Timestamp value (optional, defaults to Date.now())
-     * @param {Buffer} entropy - Optional entropy for bits 79-127
+     * @param {Uint8Array} entropy - Optional entropy for bits 79-127
      * @returns {UUID} New UUID instance
      */
-    static TA(timestamp: number | Date, entropy?: Buffer): UUID;
+    static TA(timestamp: number | Date, entropy?: Uint8Array): UUID;
     /**
      * Create Issuer Variant v1 UUID (ultra-short alias)
      * Subvariant 01 - Issuer-based identification
      * @param {number} issuerID - Issuer ID (0-1023)
-     * @param {Buffer} entropy - Additional entropy data
+     * @param {Uint8Array} entropy - Additional entropy data
      * @returns {UUID} New UUID instance
      */
-    static IA(issuerID: number, entropy?: Buffer): UUID;
+    static IA(issuerID: number, entropy?: Uint8Array): UUID;
     /**
      * Create Timestamp Variant v2 UUID (ultra-short alias)
      * Subvariant 00 - Timestamp-based identification (milliseconds precision)
      * @param {number|Date} timestamp - Timestamp value (optional, defaults to Date.now())
-     * @param {Buffer} entropy - Optional entropy for bits 79-127
+     * @param {Uint8Array} entropy - Optional entropy for bits 79-127
      * @returns {UUID} New UUID instance
      */
-    static TB(timestamp: number | Date, entropy?: Buffer): UUID;
+    static TB(timestamp: number | Date, entropy?: Uint8Array): UUID;
     /**
      * Get the shared issuer registry instance
      * @returns {Promise<IssuerRegistry>} Shared registry instance
@@ -87,16 +87,16 @@ export class UUID {
     static getIssuerInfo(issuerID: number): Promise<object | null>;
     /**
      * Validate a UUID buffer for specification compliance
-     * @param {Buffer} buffer - UUID buffer to validate
+     * @param {Uint8Array} buffer - UUID buffer to validate
      * @returns {Promise<object>} Validation results
      */
-    static validate(buffer: Buffer): Promise<object>;
+    static validate(buffer: Uint8Array): Promise<object>;
     /**
      * Generate a complete validation report for a UUID
-     * @param {Buffer} buffer - UUID buffer to validate
+     * @param {Uint8Array} buffer - UUID buffer to validate
      * @returns {Promise<object>} Detailed validation report
      */
-    static validateDetailed(buffer: Buffer): Promise<object>;
+    static validateDetailed(buffer: Uint8Array): Promise<object>;
     /**
      * Generate a version 1 (timestamp) UUID
      * @param {Object} options - Optional parameters
@@ -179,13 +179,13 @@ export class UUID {
     static detectVariant(uuid: string | Buffer | UUID): string | number | null;
     /**
      * Create a new UUID instance
-     * @param {Buffer|string|null} data - Optional UUID data to parse
+     * @param {Uint8Array|string|null} data - Optional UUID data to parse
      */
-    constructor(data?: Buffer | string | null);
-    _buffer: any;
+    constructor(data?: Uint8Array | string | null);
+    _buffer: Uint8Array<ArrayBuffer>;
     /**
      * Parse UUID from existing data
-     * @param {Buffer|string} data - UUID data to parse
+     * @param {Uint8Array|string} data - UUID data to parse
      * @private
      */
     private _parseFromData;
@@ -197,7 +197,7 @@ export class UUID {
     private _setTimestamp;
     /**
      * Fill remaining bits with entropy while preserving immutable fields
-     * @param {Buffer} entropy - Entropy data
+     * @param {Uint8Array} entropy - Entropy data
      * @private
      */
     private _fillEntropy;
@@ -287,7 +287,7 @@ export class UUID {
     toString(): string;
     /**
      * Convert UUID to buffer
-     * @returns {Buffer} UUID as 16-byte buffer
+     * @returns {Buffer} UUID as 16-byte buffer (Node); a Uint8Array copy in environments without Buffer
      */
     toBuffer(): Buffer;
     /**
