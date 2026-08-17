@@ -18,7 +18,7 @@
  * Optimized for database indexing and distributed systems.
  */
 
-import crypto from "crypto";
+import { randomBytes } from "@cldmv/uuid/rng";
 import { stringify } from "./utils.mjs";
 
 /**
@@ -44,7 +44,7 @@ export function v7(options = {}) {
 	buf[offset + 5] = msecs & 0xff;
 
 	// ver (4 bits) + rand_a (12 bits)
-	const randBytes = crypto.randomBytes(10);
+	const randBytes = randomBytes(10);
 	buf[offset + 6] = (randBytes[0] & 0x0f) | 0x70; // version 7
 	buf[offset + 7] = randBytes[1];
 

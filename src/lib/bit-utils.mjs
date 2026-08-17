@@ -24,7 +24,7 @@
 export class BitUtils {
 	/**
 	 * Set specific bits in a buffer
-	 * @param {Buffer} buffer - Target buffer
+	 * @param {Uint8Array} buffer - Target buffer
 	 * @param {number} startBit - Starting bit position (0-based)
 	 * @param {number} bitCount - Number of bits to set
 	 * @param {number|BigInt} value - Value to set
@@ -58,7 +58,7 @@ export class BitUtils {
 
 	/**
 	 * Get specific bits from a buffer
-	 * @param {Buffer} buffer - Source buffer
+	 * @param {Uint8Array} buffer - Source buffer
 	 * @param {number} startBit - Starting bit position (0-based)
 	 * @param {number} bitCount - Number of bits to get
 	 * @returns {BigInt} The extracted value as BigInt
@@ -82,7 +82,7 @@ export class BitUtils {
 
 	/**
 	 * Get specific bits from a buffer as a regular number (for values <= 32 bits)
-	 * @param {Buffer} buffer - Source buffer
+	 * @param {Uint8Array} buffer - Source buffer
 	 * @param {number} startBit - Starting bit position (0-based)
 	 * @param {number} bitCount - Number of bits to get (max 32)
 	 * @returns {number} The extracted value as number
@@ -96,7 +96,7 @@ export class BitUtils {
 
 	/**
 	 * Clear specific bits in a buffer
-	 * @param {Buffer} buffer - Target buffer
+	 * @param {Uint8Array} buffer - Target buffer
 	 * @param {number} startBit - Starting bit position (0-based)
 	 * @param {number} bitCount - Number of bits to clear
 	 */
@@ -106,7 +106,7 @@ export class BitUtils {
 
 	/**
 	 * Toggle specific bits in a buffer
-	 * @param {Buffer} buffer - Target buffer
+	 * @param {Uint8Array} buffer - Target buffer
 	 * @param {number} startBit - Starting bit position (0-based)
 	 * @param {number} bitCount - Number of bits to toggle
 	 */
@@ -123,11 +123,11 @@ export class BitUtils {
 	 * Create a bit mask for specific bit positions
 	 * @param {number} totalBits - Total number of bits in the mask
 	 * @param {Array<number>} bitPositions - Array of bit positions to set
-	 * @returns {Buffer} Buffer containing the bit mask
+	 * @returns {Uint8Array} Buffer containing the bit mask
 	 */
 	static createBitMask(totalBits, bitPositions) {
 		const byteCount = Math.ceil(totalBits / 8);
-		const mask = Buffer.alloc(byteCount, 0);
+		const mask = new Uint8Array(byteCount);
 
 		for (const bitPos of bitPositions) {
 			if (bitPos < 0 || bitPos >= totalBits) {
@@ -144,8 +144,8 @@ export class BitUtils {
 
 	/**
 	 * Apply a bit mask to a buffer (AND operation)
-	 * @param {Buffer} buffer - Target buffer to modify
-	 * @param {Buffer} mask - Bit mask to apply
+	 * @param {Uint8Array} buffer - Target buffer to modify
+	 * @param {Uint8Array} mask - Bit mask to apply
 	 */
 	static applyMask(buffer, mask) {
 		if (buffer.length !== mask.length) {
@@ -159,8 +159,8 @@ export class BitUtils {
 
 	/**
 	 * Apply an inverted bit mask to a buffer (clear masked bits)
-	 * @param {Buffer} buffer - Target buffer to modify
-	 * @param {Buffer} mask - Bit mask to invert and apply
+	 * @param {Uint8Array} buffer - Target buffer to modify
+	 * @param {Uint8Array} mask - Bit mask to invert and apply
 	 */
 	static applyInvertedMask(buffer, mask) {
 		if (buffer.length !== mask.length) {
@@ -174,7 +174,7 @@ export class BitUtils {
 
 	/**
 	 * Count the number of set bits in a buffer
-	 * @param {Buffer} buffer - Buffer to count bits in
+	 * @param {Uint8Array} buffer - Buffer to count bits in
 	 * @returns {number} Number of set bits
 	 */
 	static countSetBits(buffer) {
@@ -191,7 +191,7 @@ export class BitUtils {
 
 	/**
 	 * Convert a buffer to a binary string representation
-	 * @param {Buffer} buffer - Buffer to convert
+	 * @param {Uint8Array} buffer - Buffer to convert
 	 * @param {boolean} includeSeparators - Whether to include byte separators
 	 * @returns {string} Binary string representation
 	 */
@@ -207,7 +207,7 @@ export class BitUtils {
 	 * Convert a binary string to a buffer
 	 * @param {string} binaryString - Binary string (without separators)
 	 * @param {number} byteCount - Expected number of bytes
-	 * @returns {Buffer} Resulting buffer
+	 * @returns {Uint8Array} Resulting buffer
 	 */
 	static fromBinaryString(binaryString, byteCount) {
 		const cleanBinary = binaryString.replace(/\s/g, ""); // Remove any spaces
@@ -216,7 +216,7 @@ export class BitUtils {
 			throw new Error(`Binary string length ${cleanBinary.length} doesn't match expected ${byteCount * 8} bits`);
 		}
 
-		const buffer = Buffer.alloc(byteCount);
+		const buffer = new Uint8Array(byteCount);
 		for (let i = 0; i < byteCount; i++) {
 			const byteString = cleanBinary.slice(i * 8, (i + 1) * 8);
 			buffer[i] = parseInt(byteString, 2);
@@ -227,7 +227,7 @@ export class BitUtils {
 
 	/**
 	 * Validate that a bit position is within valid range for a buffer
-	 * @param {Buffer} buffer - Buffer to validate against
+	 * @param {Uint8Array} buffer - Buffer to validate against
 	 * @param {number} bitPosition - Bit position to validate
 	 * @throws {Error} If bit position is invalid
 	 */
@@ -240,7 +240,7 @@ export class BitUtils {
 
 	/**
 	 * Get a human-readable representation of specific bit fields
-	 * @param {Buffer} buffer - Buffer to analyze
+	 * @param {Uint8Array} buffer - Buffer to analyze
 	 * @param {Object} fieldDefinitions - Object mapping field names to {start, length} definitions
 	 * @returns {Object} Object with field names as keys and their values
 	 */

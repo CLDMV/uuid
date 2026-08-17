@@ -17,7 +17,7 @@
  * Generates UUIDs from random or pseudo-random numbers.
  */
 
-import crypto from "crypto";
+import { randomBytes } from "@cldmv/uuid/rng";
 import { stringify } from "./utils.mjs";
 
 /**
@@ -32,9 +32,9 @@ export function v4(options = {}) {
 	const buf = options.buf || new Uint8Array(16);
 	const offset = options.offset || 0;
 
-	const randomBytes = options.random || crypto.randomBytes(16);
+	const randomValues = options.random || randomBytes(16);
 	for (let i = 0; i < 16; i++) {
-		buf[offset + i] = randomBytes[i];
+		buf[offset + i] = randomValues[i];
 	}
 
 	// Set version (4 bits in byte 6)

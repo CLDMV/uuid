@@ -1,6 +1,6 @@
 {
 	"name": "@cldmv/uuid",
-	"version": "1.1.7",
+	"version": "1.2.0",
 	"description": "Extended RFC 4122 and RFC 9562 UUID implementation with custom variant structures, issuer-based identification, and timestamp variants",
 	"main": "./index.cjs",
 	"module": "./index.mjs",
@@ -16,6 +16,30 @@
 				"import": "./src/uuid.mjs"
 			},
 			"import": "./dist/uuid.mjs"
+		},
+		"./rng": {
+			"uuid-dev": {
+				"browser": "./src/lib/rng-browser.mjs",
+				"import": "./src/lib/rng.mjs"
+			},
+			"browser": "./dist/lib/rng-browser.mjs",
+			"import": "./dist/lib/rng.mjs"
+		},
+		"./bytes": {
+			"uuid-dev": {
+				"browser": "./src/lib/bytes-browser.mjs",
+				"import": "./src/lib/bytes.mjs"
+			},
+			"browser": "./dist/lib/bytes-browser.mjs",
+			"import": "./dist/lib/bytes.mjs"
+		},
+		"./hash": {
+			"uuid-dev": {
+				"browser": "./src/lib/hash-browser.mjs",
+				"import": "./src/lib/hash.mjs"
+			},
+			"browser": "./dist/lib/hash-browser.mjs",
+			"import": "./dist/lib/hash.mjs"
 		},
 		"./package.json": "./package.json"
 	},

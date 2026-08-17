@@ -20,6 +20,7 @@
 
 import { VARIANT_BITS, SUBVARIANT_TIMESTAMP, SUBVARIANT_ISSUER, ISSUER_CATEGORIES, ISSUER_ID_MASK } from "./constants.mjs";
 import { BitUtils } from "./bit-utils.mjs";
+import { toHex } from "@cldmv/uuid/bytes";
 
 /**
  * Validator class for UUID specification compliance
@@ -27,11 +28,11 @@ import { BitUtils } from "./bit-utils.mjs";
 class UUIDValidator {
 	/**
 	 * Validate complete UUID compliance with custom specification
-	 * @param {Buffer} uuidBuffer - 16-byte UUID buffer
+	 * @param {Uint8Array} uuidBuffer - 16-byte UUID buffer
 	 * @returns {Object} Validation results
 	 */
 	static validateCompleteUUID(uuidBuffer) {
-		if (!Buffer.isBuffer(uuidBuffer) || uuidBuffer.length !== 16) {
+		if (!(uuidBuffer instanceof Uint8Array) || uuidBuffer.length !== 16) {
 			throw new Error("UUID must be a 16-byte buffer");
 		}
 
@@ -65,7 +66,7 @@ class UUIDValidator {
 
 	/**
 	 * Validate UUID specific fields
-	 * @param {Buffer} uuidBuffer - UUID buffer
+	 * @param {Uint8Array} uuidBuffer - UUID buffer
 	 * @param {Object} results - Results object to populate
 	 * @private
 	 */
@@ -109,7 +110,7 @@ class UUIDValidator {
 
 	/**
 	 * Validate issuer variant specific requirements
-	 * @param {Buffer} uuidBuffer - UUID buffer
+	 * @param {Uint8Array} uuidBuffer - UUID buffer
 	 * @param {Object} results - Results object to populate
 	 * @private
 	 */
@@ -140,7 +141,7 @@ class UUIDValidator {
 
 	/**
 	 * Validate timestamp variant specific requirements
-	 * @param {Buffer} uuidBuffer - UUID buffer
+	 * @param {Uint8Array} uuidBuffer - UUID buffer
 	 * @param {Object} results - Results object to populate
 	 * @private
 	 */
@@ -193,7 +194,7 @@ class UUIDValidator {
 
 	/**
 	 * Validate bit layout compliance
-	 * @param {Buffer} uuidBuffer - UUID buffer
+	 * @param {Uint8Array} uuidBuffer - UUID buffer
 	 * @returns {Object} Bit layout validation results
 	 */
 	static validateBitLayout(uuidBuffer) {
@@ -248,7 +249,7 @@ class UUIDValidator {
 
 	/**
 	 * Validate entropy distribution in non-immutable fields
-	 * @param {Buffer} uuidBuffer - UUID buffer
+	 * @param {Uint8Array} uuidBuffer - UUID buffer
 	 * @returns {Object} Entropy validation results
 	 */
 	static validateEntropy(uuidBuffer) {
@@ -260,7 +261,7 @@ class UUIDValidator {
 		};
 
 		// Create mask for immutable fields
-		const immutableMask = Buffer.alloc(16, 0);
+		const immutableMask = new Uint8Array(16);
 
 		// Mark immutable bits (these should not contribute to entropy analysis)
 		const immutableFields = [
@@ -280,7 +281,7 @@ class UUIDValidator {
 		}
 
 		// Extract entropy bits (non-immutable bits)
-		const entropyBuffer = Buffer.from(uuidBuffer);
+		const entropyBuffer = new Uint8Array(uuidBuffer);
 		for (let i = 0; i < 16; i++) {
 			entropyBuffer[i] &= ~immutableMask[i]; // Clear immutable bits
 		}
@@ -371,16 +372,15 @@ class UUIDValidator {
 
 	/**
 	 * Generate a comprehensive validation report
-	 * @param {Buffer} uuidBuffer - UUID buffer to validate
+	 * @param {Uint8Array} uuidBuffer - UUID buffer to validate
 	 * @returns {Object} Comprehensive validation report
 	 */
 	static generateValidationReport(uuidBuffer) {
+		const hex = toHex(uuidBuffer);
 		const report = {
 			timestamp: new Date(),
-			uuid: uuidBuffer.toString("hex"),
-			uuidString: `${uuidBuffer.toString("hex").slice(0, 8)}-${uuidBuffer.toString("hex").slice(8, 12)}-${uuidBuffer
-				.toString("hex")
-				.slice(12, 16)}-${uuidBuffer.toString("hex").slice(16, 20)}-${uuidBuffer.toString("hex").slice(20, 32)}`,
+			uuid: hex,
+			uuidString: `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`,
 			overallValid: true,
 			sections: {}
 		};

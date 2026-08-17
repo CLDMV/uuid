@@ -17,7 +17,7 @@
  * Generates UUIDs based on timestamp and node (MAC address) information.
  */
 
-import crypto from "crypto";
+import { randomBytes } from "@cldmv/uuid/rng";
 import { stringify } from "./utils.mjs";
 
 /**
@@ -62,14 +62,20 @@ export function v1(options = {}) {
 	buf[offset + 7] = ((ticks / 0x10000000000) >>> 0) & 0xff;
 
 	// clock_seq_hi_and_reserved (8 bits)
-	const clockseq = options.clockseq !== undefined ? options.clockseq : (crypto.randomBytes(2).readUInt16BE(0) & 0x3fff) | 0;
+	let clockseq;
+	if (options.clockseq !== undefined) {
+		clockseq = options.clockseq;
+	} else {
+		const clockseqBytes = randomBytes(2);
+		clockseq = (((clockseqBytes[0] << 8) | clockseqBytes[1]) & 0x3fff) | 0;
+	}
 	buf[offset + 8] = ((clockseq >>> 8) | 0x80) & 0xff; // variant 10
 
 	// clock_seq_low (8 bits)
 	buf[offset + 9] = clockseq & 0xff;
 
 	// node (48 bits)
-	const node = options.node || crypto.randomBytes(6);
+	const node = options.node || randomBytes(6);
 	for (let i = 0; i < 6; i++) {
 		buf[offset + 10 + i] = node[i];
 	}

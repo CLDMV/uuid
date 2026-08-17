@@ -19,7 +19,7 @@
  * correctly; all other bits can be filled with custom data.
  */
 
-import crypto from "crypto";
+import { randomBytes } from "@cldmv/uuid/rng";
 import { stringify } from "./utils.mjs";
 
 /**
@@ -43,7 +43,7 @@ export function v8(options = {}) {
 	const offset = options.offset || 0;
 
 	// Use custom data if provided, otherwise random
-	const data = options.data || crypto.randomBytes(16);
+	const data = options.data || randomBytes(16);
 
 	// Copy data to buffer
 	for (let i = 0; i < 16; i++) {
