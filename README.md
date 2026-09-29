@@ -6,6 +6,24 @@ Extended UUID specification designed for RFC inclusion, formally extending RFC 4
 
 [![Contributors]][contributors_url] [![Sponsor shinrai]][sponsor_url]
 
+## ✨ What's New
+
+### Latest: v1.2.3 (September 2026)
+
+- **Release tooling only, no runtime change**: the CI and release workflows now match the `CLDMV/.github` v4.29.2 templates. That adds an approval-gated release merge that keeps the curated release notes, SLSA build provenance for published releases, auto-merge for member PRs and automatic recovery for stuck Dependabot PRs ([#37](https://github.com/CLDMV/uuid/pull/37)). A new bundle-size check tracks the published `index.mjs` / `index.cjs` / `dist/` files ([#38](https://github.com/CLDMV/uuid/pull/38)). The shipped code is the same as in v1.2.2.
+- [View full v1.2.3 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.3.md)
+
+### Recent Releases
+
+- **v1.2.2** (September 2026): dev-only bump of `@cldmv/fix-headers` from 1.3.9 to 1.3.11, no runtime change ([#31](https://github.com/CLDMV/uuid/pull/31)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.2.md))
+- **v1.2.1** (September 2026): CI only, passes `BOT_NAME` / `BOT_EMAIL` to the v4 release and feature-PR workflows, no runtime change ([#27](https://github.com/CLDMV/uuid/pull/27)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.1.md))
+- **v1.2.0** (August 2026): UUID generation no longer imports any Node built-ins, so browser bundlers can use it without polyfills ([#23](https://github.com/CLDMV/uuid/pull/23)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.0.md))
+- **v1.1.7** (August 2026): exposes `./package.json` in the `exports` map ([#18](https://github.com/CLDMV/uuid/pull/18)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.1.7.md))
+
+📚 **For complete version history and detailed release notes, see the [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/) folder.**
+
+---
+
 ## Overview
 
 This library implements a **new UUID specification** that formally extends the RFC 4122/9562 namespace with:
@@ -1030,7 +1048,7 @@ This specification extends the RFC namespace with custom variant 111, maintainin
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for version history and specification evolution.
+See [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/) for per-version release notes covering every release since v1.0.0.
 
 ---
 
