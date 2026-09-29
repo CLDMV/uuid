@@ -15,10 +15,10 @@ Extended UUID specification designed for RFC inclusion, formally extending RFC 4
 
 ### Recent Releases
 
-- **v1.2.2** (September 2026): dev-only bump of `@cldmv/fix-headers` from 1.3.9 to 1.3.11, no runtime change ([#31](https://github.com/CLDMV/uuid/pull/31)) ([Release](https://github.com/CLDMV/uuid/releases/tag/v1.2.2))
-- **v1.2.1** (September 2026): CI only, passes `BOT_NAME` / `BOT_EMAIL` to the v4 release and feature-PR workflows, no runtime change ([#27](https://github.com/CLDMV/uuid/pull/27)) ([Release](https://github.com/CLDMV/uuid/releases/tag/v1.2.1))
-- **v1.2.0** (August 2026): UUID generation no longer imports any Node built-ins, so browser bundlers can use it without polyfills ([#23](https://github.com/CLDMV/uuid/pull/23)) ([Release](https://github.com/CLDMV/uuid/releases/tag/v1.2.0))
-- **v1.1.7** (August 2026): exposes `./package.json` in the `exports` map ([#18](https://github.com/CLDMV/uuid/pull/18)) ([Release](https://github.com/CLDMV/uuid/releases/tag/v1.1.7))
+- **v1.2.2** (September 2026): dev-only bump of `@cldmv/fix-headers` from 1.3.9 to 1.3.11, no runtime change ([#31](https://github.com/CLDMV/uuid/pull/31)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.2.md))
+- **v1.2.1** (September 2026): CI only, passes `BOT_NAME` / `BOT_EMAIL` to the v4 release and feature-PR workflows, no runtime change ([#27](https://github.com/CLDMV/uuid/pull/27)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.1.md))
+- **v1.2.0** (August 2026): UUID generation no longer imports any Node built-ins, so browser bundlers can use it without polyfills ([#23](https://github.com/CLDMV/uuid/pull/23)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.0.md))
+- **v1.1.7** (August 2026): exposes `./package.json` in the `exports` map ([#18](https://github.com/CLDMV/uuid/pull/18)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.1.7.md))
 
 📚 **For complete version history and detailed release notes, see the [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/) folder.**
 
@@ -1048,7 +1048,7 @@ This specification extends the RFC namespace with custom variant 111, maintainin
 
 ## Changelog
 
-See [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/) for per-version release notes (starting with v1.2.3) and the [GitHub Releases](https://github.com/CLDMV/uuid/releases) page for earlier versions.
+See [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/) for per-version release notes covering every release since v1.0.0.
 
 ---
 
