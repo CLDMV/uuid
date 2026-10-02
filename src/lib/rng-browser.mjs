@@ -1,14 +1,16 @@
 /**
- *	@Project: @cldmv/slothlet
+ *
+ *	@Project: @cldmv/uuid
  *	@Filename: /src/lib/rng-browser.mjs
- *	@Date: 2026-08-17T00:00:00-08:00 (0)
+ *	@Date: 2026-08-17T00:00:00-08:00 (1786953600)
  *	@Author: Nate Corcoran <CLDMV>
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-08-17T00:00:00-08:00 (0)
+ *	@Last modified time: 2026-10-02T15:33:31-07:00 (1790980411)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
+ *
  */
 
 /**

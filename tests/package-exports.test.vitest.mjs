@@ -1,14 +1,16 @@
 /**
+ *
  *	@Project: @cldmv/uuid
  *	@Filename: /tests/package-exports.test.vitest.mjs
- *	@Date: 2026-08-09T00:00:00-08:00 (1786233600)
+ *	@Date: 2026-08-08T22:43:33-07:00 (1786254213)
  *	@Author: Nate Corcoran <CLDMV>
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-08-09T00:00:00-08:00 (1786233600)
+ *	@Last modified time: 2026-10-02T15:33:37-07:00 (1790980417)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
+ *
  */
 
 import { test, expect, describe } from "vitest";
