@@ -115,7 +115,7 @@
 	],
 	"sideEffects": false,
 	"devDependencies": {
-		"@cldmv/fix-headers": "^1.2.2",
+		"@cldmv/fix-headers": "^2.1.0",
 		"@cldmv/vitest-runner": "^1.2.0",
 		"@vitest/coverage-v8": "^5.0.0",
 		"typescript": "^5.9.3",
