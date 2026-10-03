@@ -13,19 +13,24 @@
  *
  */
 
-// Development environment check (must happen before UUID imports)
-try {
-	await import("./devcheck.mjs");
-} catch {
-	// ignore
-}
+// Development environment check. devcheck.mjs exists only in a source checkout; it is
+// never published, so the import is allowed to fail. It runs inside an async function
+// rather than as a top-level await: index.cjs loads this file through Node's synchronous
+// require(esm), which rejects any module graph containing top-level await
+// (ERR_REQUIRE_ASYNC_MODULE).
+(async () => {
+	try {
+		await import("./devcheck.mjs");
+	} catch {
+		// ignore - devcheck.mjs is not published
+	}
+})();
 
 /**
  * ESM entry point for UUID
  *
  * Re-exports all components from the main UUID module
  */
-const { UUID, ISSUER_CATEGORIES } = await import("@cldmv/uuid/main");
+import { UUID, ISSUER_CATEGORIES } from "@cldmv/uuid/main";
 
-export { UUID, UUID as uuid, ISSUER_CATEGORIES };
-export default UUID;
+export { UUID as default, UUID, UUID as uuid, ISSUER_CATEGORIES };
