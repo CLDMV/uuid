@@ -1,42 +1,36 @@
 # @cldmv/uuid
 
-Extended UUID specification designed for RFC inclusion, formally extending RFC 4122/9562 with custom variant structures for issuer-based identification and enhanced timestamp variants.
+**@cldmv/uuid** is an extended UUID specification designed for RFC inclusion. It formally extends RFC 4122/9562 with custom variant structures for issuer-based identification and enhanced timestamp variants, and ships a complete implementation of the standard RFC UUID versions alongside it.
 
-[![npm version]][npm_version_url] [![npm downloads]][npm_downloads_url] <!-- [![GitHub release]][github_release_url] -->[![GitHub downloads]][github_downloads_url] [![Last commit]][last_commit_url] <!-- [![Release date]][release_date_url] -->[![npm last update]][npm_last_update_url] [![Coverage]][coverage_url]
+The custom variants (`TA`, `TB`, `IA`) live in the variant `111` namespace, so they never collide with standard RFC UUIDs, and the same `UUID` class parses, validates and inspects both. The package has no runtime dependencies and runs in Node.js and in browser bundles.
+
+> _RFC-ready custom UUID variants, with every standard RFC UUID version included._
+
+[![npm version]][npm_version_url] [![npm downloads]][npm_downloads_url] <!-- [![GitHub release]][github_release_url] -->[![GitHub downloads]][github_downloads_url] [![Last commit]][last_commit_url] <!-- [![Release date]][release_date_url] -->[![npm last update]][npm_last_update_url] [![coverage]][coverage_url]
 
 [![Contributors]][contributors_url] [![Sponsor shinrai]][sponsor_url]
 
+---
+
 ## ✨ What's New
 
-### Latest: v1.2.3 (September 2026)
+### Latest: v1.2.5 (October 2026)
 
-- **Release tooling only, no runtime change**: the CI and release workflows now match the `CLDMV/.github` v4.29.2 templates. That adds an approval-gated release merge that keeps the curated release notes, SLSA build provenance for published releases, auto-merge for member PRs and automatic recovery for stuck Dependabot PRs ([#37](https://github.com/CLDMV/uuid/pull/37)). A new bundle-size check tracks the published `index.mjs` / `index.cjs` / `dist/` files ([#38](https://github.com/CLDMV/uuid/pull/38)). The shipped code is the same as in v1.2.2.
-- [View full v1.2.3 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.3.md)
+- **`require()` works**: the CommonJS entry failed to load in every earlier release, because the ESM entry it wraps used top-level `await`, which Node's synchronous `require(esm)` rejects with `ERR_REQUIRE_ASYNC_MODULE`. The entry no longer uses top-level `await`, so `require("@cldmv/uuid")` now returns the same `UUID` object as `import` on Node.js ^20.19.0 or >=22.12.0, and older versions get a clear error that points to `import()`. ESM behavior and the exported names are unchanged ([#50](https://github.com/CLDMV/uuid/pull/50)).
+- [View full v1.2.5 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.5.md)
 
 ### Recent Releases
 
+- **v1.2.4** (October 2026): dev tooling only, moves header maintenance to the shared CLDMV fix-headers config and stops the in-repo PR mirror check from reporting as skipped, no runtime change ([#46](https://github.com/CLDMV/uuid/pull/46), [#47](https://github.com/CLDMV/uuid/pull/47)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.4.md))
+- **v1.2.3** (October 2026): release tooling only, syncs the workflows with the `CLDMV/.github` v4.29.2 templates and adds a bundle-size check, no runtime change ([#37](https://github.com/CLDMV/uuid/pull/37), [#38](https://github.com/CLDMV/uuid/pull/38)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.3.md))
 - **v1.2.2** (September 2026): dev-only bump of `@cldmv/fix-headers` from 1.3.9 to 1.3.11, no runtime change ([#31](https://github.com/CLDMV/uuid/pull/31)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.2.md))
 - **v1.2.1** (September 2026): CI only, passes `BOT_NAME` / `BOT_EMAIL` to the v4 release and feature-PR workflows, no runtime change ([#27](https://github.com/CLDMV/uuid/pull/27)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.1.md))
-- **v1.2.0** (August 2026): UUID generation no longer imports any Node built-ins, so browser bundlers can use it without polyfills ([#23](https://github.com/CLDMV/uuid/pull/23)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.0.md))
-- **v1.1.7** (August 2026): exposes `./package.json` in the `exports` map ([#18](https://github.com/CLDMV/uuid/pull/18)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.1.7.md))
 
 📚 **For complete version history and detailed release notes, see the [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/) folder.**
 
 ---
 
-## Overview
-
-This library implements a **new UUID specification** that formally extends the RFC 4122/9562 namespace with:
-
-- **Custom Variant Structure (111)**: Entry into extended namespace via bits 64-66
-- **Subvariant System**: Timestamp (00) and Issuer (01) branches with reserved expansion slots
-- **Issuer-Based Identification**: 10-bit issuer ID system with categorized allocation ranges
-- **Enhanced Timestamp Variants**: Signed 70-bit timestamps supporting pre-epoch dates with proper lexicographic ordering
-- **Formal Bit Layout**: Precisely specified field positions maintaining RFC compatibility
-
-The specification is designed for formal RFC submission and includes comprehensive implementation details, entropy requirements, and collision resistance analysis.
-
-## Features
+## 🚀 Key Features
 
 - 🆕 **RFC-Ready Specification**: Extended variant (111) with formal bit layout and entropy analysis
 - 🔧 **Issuer Variant**: 10-bit ID space (0-1023) with categorized allocation (Technology, Open Source, Reserved)
@@ -48,13 +42,38 @@ The specification is designed for formal RFC submission and includes comprehensi
 - 🧪 **Thoroughly Tested**: 170+ tests covering all specification requirements
 - ✅ **Bonus: RFC Support**: Complete v1/v3/v4/v5/v6/v7 implementation included
 
-## Installation
+---
+
+## 📖 Specification Overview
+
+This library implements a **new UUID specification** that formally extends the RFC 4122/9562 namespace with:
+
+- **Custom Variant Structure (111)**: Entry into extended namespace via bits 64-66
+- **Subvariant System**: Timestamp (00) and Issuer (01) branches with reserved expansion slots
+- **Issuer-Based Identification**: 10-bit issuer ID system with categorized allocation ranges
+- **Enhanced Timestamp Variants**: Signed 70-bit timestamps supporting pre-epoch dates with proper lexicographic ordering
+- **Formal Bit Layout**: Precisely specified field positions maintaining RFC compatibility
+
+The specification is designed for formal RFC submission and includes comprehensive implementation details, entropy requirements, and collision resistance analysis.
+
+---
+
+## 📦 Installation
+
+### Requirements
+
+- **ESM (`import`)**: Node.js v16.12.0 or higher (the package's `engines.node` floor), or any modern browser bundler through the `browser` export condition.
+- **CommonJS (`require()`)**: Node.js ^20.19.0 or >=22.12.0. `index.cjs` loads the ESM entry through Node's synchronous `require(esm)`, which older versions don't have; on those, load the package with `import()` instead.
+
+### Install
 
 ```bash
 npm install @cldmv/uuid
 ```
 
-## Quick Start
+---
+
+## 🚀 Quick Start
 
 ### Custom UUID Variants (RFC Specification)
 
@@ -127,7 +146,16 @@ if (UUID.validateRFC(v4)) {
 }
 ```
 
-## Default String Representation
+CommonJS works the same way on Node.js ^20.19.0 or >=22.12.0:
+
+```javascript
+const UUID = require("@cldmv/uuid"); // also UUID.UUID, UUID.uuid, UUID.ISSUER_CATEGORIES
+const id = UUID.TB();
+```
+
+---
+
+## 🔤 Default String Representation
 
 UUIDs automatically convert to strings when used in string contexts. This provides a seamless developer experience:
 
@@ -155,7 +183,9 @@ const buffer = uuid.toBuffer(); // <Buffer a4 54 aa 7f 80 00 01 9b e0 03 cd 24 8
 
 The UUID class implements `valueOf()`, `Symbol.toPrimitive`, and `toJSON()` to ensure proper string coercion in all contexts. Use `toBuffer()` when you explicitly need the raw binary representation.
 
-## API Reference
+---
+
+## 📘 API Reference
 
 ### Custom UUID Specification Methods
 
@@ -518,6 +548,8 @@ Complete implementation of RFC 4122/9562 standard UUID versions (bonus feature).
 
 #### Version Generators
 
+##### `UUID.v1([options])`
+
 Generate a version 1 (timestamp) UUID.
 
 ```javascript
@@ -530,9 +562,7 @@ const customUuid = UUID.v1({
 });
 ```
 
-#### Version Generators
-
-##### `UUID.v1([options])`
+##### `UUID.v3(name, namespace)`
 
 Generate a version 3 (namespace with MD5) UUID.
 
@@ -644,7 +674,9 @@ UUID.OID; // ISO OID namespace
 UUID.X500; // X.500 DN namespace
 ```
 
-## Custom UUID Specification Details
+---
+
+## 📐 Custom UUID Specification Details
 
 ### Formal Bit Layout
 
@@ -760,7 +792,9 @@ Version field (bits 75-78) is always positioned consistently across all subvaria
 - **v1** (0001): Basic issuer identification
 - **v2+**: Reserved for future issuer-based variants
 
-## Examples
+---
+
+## 💡 Examples
 
 ### Timestamp Variant Examples
 
@@ -860,8 +894,6 @@ console.log("  TB version:", tb.getVersion()); // => 2 (milliseconds)
 
 ### Standard RFC UUID Examples
 
-### Standard RFC UUID Examples
-
 ```javascript
 import { UUID } from "@cldmv/uuid";
 
@@ -895,7 +927,9 @@ if (UUID.validateRFC(v4)) {
 }
 ```
 
-## Performance
+---
+
+## ⚡ Performance
 
 The library is optimized for high-performance UUID generation with collision resistance:
 
@@ -907,7 +941,9 @@ The library is optimized for high-performance UUID generation with collision res
 - **Cryptographically Secure**: Uses Node.js crypto.randomBytes() for entropy
 - **Proper Entropy Validation**: All generated UUIDs validated for entropy quality
 
-## Demonstration Script
+---
+
+## 🎬 Demonstration Script
 
 See the custom UUID specification in action with a comprehensive human-readable demonstration:
 
@@ -948,14 +984,17 @@ Timestamp Information:
   ISO 8601                 : 2025-12-20T03:57:34.000Z
 ```
 
-## Development & Testing
+---
+
+## 🧪 Development & Testing
 
 ### Running Tests
 
 ```bash
-npm test                 # Run all tests
-npm run test:watch      # Watch mode
-npm run test:coverage   # With coverage
+npm test                 # Run all tests (Vitest suites, then the CommonJS entry tests)
+npm run test:watch       # Watch mode
+npm run test:cjs         # CommonJS entry tests only (Node's built-in test runner)
+npm run coverage         # With coverage
 ```
 
 ### Test Coverage
@@ -974,7 +1013,9 @@ npm run test:coverage   # With coverage
 
 All tests pass with 100% specification compliance.
 
-## TypeScript Support
+---
+
+## 🔷 TypeScript Support
 
 Full TypeScript definitions included for both custom and RFC UUID APIs:
 
@@ -1001,9 +1042,13 @@ const bytes: Uint8Array = UUID.parse(v4);
 const rfcVersion: number | null = UUID.version(v4);
 ```
 
-## Specification Documentation
+---
 
-The complete formal specification is available in [uuid-spec.md](uuid-spec.md), including:
+## 📚 Documentation
+
+### Specification
+
+The complete formal specification is available in [uuid-spec.md](https://github.com/CLDMV/uuid/blob/master/uuid-spec.md), including:
 
 - Detailed bit layout diagrams
 - Entropy requirement calculations (Birthday Bound analysis)
@@ -1013,31 +1058,11 @@ The complete formal specification is available in [uuid-spec.md](uuid-spec.md), 
 - Collision resistance proofs
 - RFC submission rationale
 
-## License
+### Changelog
 
-Apache-2.0 © [CLDMV](https://github.com/CLDMV)
+- **[Changelog](https://github.com/CLDMV/uuid/tree/master/docs/changelog/)**: per-version release notes for every release since v1.0.0
 
-This specification and implementation are provided for RFC standardization consideration.
-
-## Contributing
-
-Contributions to the specification and implementation are welcome! This project aims for RFC standardization, so contributions should maintain:
-
-- **Specification Compliance**: All changes must align with the formal specification
-- **Backward Compatibility**: Immutable fields (variant, subvariant positions) cannot change
-- **Comprehensive Testing**: New features require corresponding test coverage
-- **Documentation**: Changes to the specification must update [uuid-spec.md](uuid-spec.md)
-
-Please read the contributing guidelines before submitting pull requests.
-
-## Support & Discussion
-
-- 🐛 [Report Issues](https://github.com/CLDMV/uuid/issues)
-- 💬 [Specification Discussions](https://github.com/CLDMV/uuid/discussions)
-- 📖 [Full Specification Document](uuid-spec.md)
-- 💰 [Sponsor Development](https://github.com/sponsors/shinrai)
-
-## Related Projects & Standards
+### Related Projects & Standards
 
 - **[RFC 4122](https://datatracker.ietf.org/doc/html/rfc4122)** - Original UUID specification
 - **[RFC 9562](https://datatracker.ietf.org/doc/html/rfc9562)** - Updated UUID specification with v6, v7, v8
@@ -1046,9 +1071,41 @@ Please read the contributing guidelines before submitting pull requests.
 
 This specification extends the RFC namespace with custom variant 111, maintaining full compatibility with existing RFC 4122/9562 UUIDs.
 
-## Changelog
+[![CodeFactor]][codefactor_url] [![OpenSSF Scorecard]][ossf_scorecard_url] [![npms.io score]][npms_url] [![npm unpacked size]][npm_size_url] [![Repo size]][repo_size_url]
 
-See [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/) for per-version release notes covering every release since v1.0.0.
+---
+
+## 🤝 Contributing
+
+Contributions to the specification and implementation are welcome! This project aims for RFC standardization, so contributions should maintain:
+
+- **Specification Compliance**: All changes must align with the formal specification
+- **Backward Compatibility**: Immutable fields (variant, subvariant positions) cannot change
+- **Comprehensive Testing**: New features require corresponding test coverage
+- **Documentation**: Changes to the specification must update [uuid-spec.md](https://github.com/CLDMV/uuid/blob/master/uuid-spec.md)
+
+[![Contributors]][contributors_url] [![Sponsor shinrai]][sponsor_url]
+
+---
+
+## 🔗 Links
+
+- **npm**: [@cldmv/uuid](https://www.npmjs.com/package/@cldmv/uuid)
+- **GitHub**: [CLDMV/uuid](https://github.com/CLDMV/uuid)
+- **Issues**: [GitHub Issues](https://github.com/CLDMV/uuid/issues)
+- **Specification**: [uuid-spec.md](https://github.com/CLDMV/uuid/blob/master/uuid-spec.md)
+- **Changelog**: [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/)
+- **Sponsor**: [GitHub Sponsors](https://github.com/sponsors/shinrai)
+
+---
+
+## 📄 License
+
+[![npm license]][npm_license_url]
+
+Apache-2.0 © Shinrai / CLDMV
+
+This specification and implementation are provided for RFC standardization consideration.
 
 ---
 
@@ -1056,7 +1113,6 @@ See [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/)
 
 Made with ❤️ by [CLDMV](https://cldmv.net)
 
-<!-- Badge definitions -->
 <!-- [github release]: https://img.shields.io/github/v/release/CLDMV/uuid?style=for-the-badge&logo=github&logoColor=white&labelColor=181717 -->
 <!-- [github_release_url]: https://github.com/CLDMV/uuid/releases -->
 <!-- [release date]: https://img.shields.io/github/release-date/CLDMV/uuid?style=for-the-badge&logo=github&logoColor=white&labelColor=181717 -->
@@ -1064,14 +1120,26 @@ Made with ❤️ by [CLDMV](https://cldmv.net)
 
 [npm version]: https://img.shields.io/npm/v/%40cldmv%2Fuuid.svg?style=for-the-badge&logo=npm&logoColor=white&labelColor=CB3837
 [npm_version_url]: https://www.npmjs.com/package/@cldmv/uuid
-[npm downloads]: https://img.shields.io/npm/dm/%40cldmv%2Fuuid.svg?style=for-the-badge&logo=npm&logoColor=white&labelColor=CB3837
-[npm_downloads_url]: https://www.npmjs.com/package/@cldmv/uuid
-[github downloads]: https://img.shields.io/github/downloads/CLDMV/uuid/total?style=for-the-badge&logo=github&logoColor=white&labelColor=181717
-[github_downloads_url]: https://github.com/CLDMV/uuid/releases
 [last commit]: https://img.shields.io/github/last-commit/CLDMV/uuid?style=for-the-badge&logo=github&logoColor=white&labelColor=181717
 [last_commit_url]: https://github.com/CLDMV/uuid/commits
 [npm last update]: https://img.shields.io/npm/last-update/%40cldmv%2Fuuid?style=for-the-badge&logo=npm&logoColor=white&labelColor=CB3837
 [npm_last_update_url]: https://www.npmjs.com/package/@cldmv/uuid
+[codefactor]: https://img.shields.io/codefactor/grade/github/CLDMV/uuid?style=for-the-badge&logo=codefactor&logoColor=white&labelColor=F44A6A
+[codefactor_url]: https://www.codefactor.io/repository/github/cldmv/uuid
+[openssf scorecard]: https://img.shields.io/ossf-scorecard/github.com/CLDMV/uuid?style=for-the-badge&label=OpenSSF%20Scorecard
+[ossf_scorecard_url]: https://scorecard.dev/viewer/?uri=github.com/CLDMV/uuid
+[npms.io score]: https://img.shields.io/npms-io/final-score/%40cldmv%2Fuuid?style=for-the-badge&logo=npms&logoColor=white&labelColor=0B5D57
+[npms_url]: https://npms.io/search?q=%40cldmv%2Fuuid
+[npm downloads]: https://img.shields.io/npm/dm/%40cldmv%2Fuuid.svg?style=for-the-badge&logo=npm&logoColor=white&labelColor=CB3837
+[npm_downloads_url]: https://www.npmjs.com/package/@cldmv/uuid
+[github downloads]: https://img.shields.io/github/downloads/CLDMV/uuid/total?style=for-the-badge&logo=github&logoColor=white&labelColor=181717
+[github_downloads_url]: https://github.com/CLDMV/uuid/releases
+[npm unpacked size]: https://img.shields.io/npm/unpacked-size/%40cldmv%2Fuuid.svg?style=for-the-badge&logo=npm&logoColor=white&labelColor=CB3837
+[npm_size_url]: https://www.npmjs.com/package/@cldmv/uuid
+[repo size]: https://img.shields.io/github/repo-size/CLDMV/uuid?style=for-the-badge&logo=github&logoColor=white&labelColor=181717
+[repo_size_url]: https://github.com/CLDMV/uuid
+[npm license]: https://img.shields.io/npm/l/%40cldmv%2Fuuid.svg?style=for-the-badge&logo=npm&logoColor=white&labelColor=CB3837
+[npm_license_url]: https://www.npmjs.com/package/@cldmv/uuid
 [coverage]: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FCLDMV%2Fuuid%2Fbadges%2Fcoverage.json&style=for-the-badge&logo=vitest&logoColor=white
 [coverage_url]: https://github.com/CLDMV/uuid/blob/badges/coverage.json
 [contributors]: https://img.shields.io/github/contributors/CLDMV/uuid.svg?style=for-the-badge&logo=github&logoColor=white&labelColor=181717
