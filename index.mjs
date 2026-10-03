@@ -33,5 +33,4 @@
  */
 import { UUID, ISSUER_CATEGORIES } from "@cldmv/uuid/main";
 
-export { UUID, UUID as uuid, ISSUER_CATEGORIES };
-export default UUID;
+export { UUID as default, UUID, UUID as uuid, ISSUER_CATEGORIES };
