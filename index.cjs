@@ -21,10 +21,20 @@
  *
  * @module uuid
  */
-const { createRequire } = require("module");
-const requireESM = createRequire(__filename);
+"use strict";
 
-const { UUID, uuid, ISSUER_CATEGORIES } = requireESM("./index.mjs");
+// index.cjs is a thin wrapper: it loads index.mjs through Node's synchronous require(esm).
+// Node.js versions without require(esm) would fail with a bare ERR_REQUIRE_ESM, so fail
+// early with a message that says what to do instead.
+if (!process.features?.require_module) {
+	const error = new Error(
+		`@cldmv/uuid: require() needs Node.js ^20.19.0 or >=22.12.0 (this is ${process.version}). On older Node.js, load the package with import() instead.`
+	);
+	error.code = "ERR_REQUIRE_ESM";
+	throw error;
+}
+
+const { UUID, uuid, ISSUER_CATEGORIES } = require("./index.mjs");
 
 // Export UUID as default
 module.exports = UUID;
