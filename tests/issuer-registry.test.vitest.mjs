@@ -1,14 +1,16 @@
 /**
+ *
  *	@Project: @cldmv/uuid
  *	@Filename: /tests/issuer-registry.test.vitest.mjs
- *	@Date: 2026-03-04 20:29:09 -08:00 (1772684949)
+ *	@Date: 2026-03-04T20:29:09-08:00 (1772684949)
  *	@Author: Nate Corcoran <CLDMV>
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
- *	@Last modified by: Shinrai <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-08-08 17:13:20 -07:00 (1786234400)
+ *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
+ *	@Last modified time: 2026-10-02T15:33:37-07:00 (1790980417)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
+ *
  */
 
 /**

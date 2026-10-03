@@ -1,14 +1,16 @@
 /**
+ *
  *	@Project: @cldmv/uuid
  *	@Filename: /tests/DevCheck.test.vitest.mjs
- *	@Date: 2026-08-08T00:00:00-08:00 (1786233600)
+ *	@Date: 2026-08-08T00:00:00-08:00 (1786176000)
  *	@Author: Nate Corcoran <CLDMV>
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
- *	@Last modified by: Shinrai <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-08-08 17:13:20 -07:00 (1786234400)
+ *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
+ *	@Last modified time: 2026-10-02T15:33:35-07:00 (1790980415)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
+ *
  */
 
 import { test, expect, describe, beforeAll, afterAll } from "vitest";
