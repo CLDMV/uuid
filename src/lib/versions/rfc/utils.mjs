@@ -55,7 +55,7 @@ export function parse(uuid) {
 
 /**
  * Convert array of bytes to UUID string
- * @param {Uint8Array|Buffer|Array} bytes - 16-byte array
+ * @param {ArrayLike<number>} bytes - 16-byte array
  * @returns {string} UUID string with dashes
  * @example
  * stringify([110, 192, 189, 127, 17, 192, 67, 218, 151, 94, 42, 138, 217, 235, 174, 11]);

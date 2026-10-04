@@ -982,9 +982,9 @@ Full TypeScript definitions included for both custom and RFC UUID APIs:
 import { UUID } from "@cldmv/uuid";
 
 // Custom UUID specification (RFC-ready)
-const ta: string = UUID.TA();
-const tb: string = UUID.TB();
-const ia: string = UUID.IA(404);
+const ta: string = UUID.TA().toString();
+const tb: string = UUID.TB().toString();
+const ia: string = UUID.IA(404).toString();
 
 // Instance methods with proper types
 const uuid = new UUID(ta);
@@ -998,7 +998,7 @@ const category: string | null = uuid.getIssuerCategory();
 // Standard RFC UUIDs
 const v4: string = UUID.v4();
 const bytes: Uint8Array = UUID.parse(v4);
-const rfcVersion: number | null = UUID.version(v4);
+const rfcVersion: string | number | null = UUID.version(v4); // 4 here; "TA" / "TB" / "IA" for the custom variants
 ```
 
 ## Specification Documentation
