@@ -182,6 +182,52 @@ export { random, hex, back, copy, md5Digest, sha1Digest };
 	assert.ok(example, "README.md has no ```typescript block under its TypeScript Support heading");
 	writeFileSync(path.join(consumerDir, "readme.mts"), `${example[1]}\nexport {};\n`);
 
+	// Node flavour: under nodenext the "node" condition picks the declarations where the
+	// runtime byte container is a Buffer, so Buffer-only APIs compile.
+	writeFileSync(
+		path.join(consumerDir, "node.mts"),
+		`import { UUID } from "@cldmv/uuid";
+
+const length: number = UUID.v4().length;
+const ta = UUID.TA();
+const tb = UUID.TB(new Date());
+const bytes: Buffer = ta.toBuffer();
+const hex: string = tb.toBuffer().toString("hex");
+const v4Hex: string = UUID.v4({ buf: Buffer.alloc(16) }).toString("hex");
+const v7Hex: string = UUID.v7({ buf: Buffer.alloc(32), offset: 16 }).toString("hex");
+// A plain Uint8Array passed as buf comes back as exactly that, not as a Buffer.
+const plain: Uint8Array = UUID.v1({ buf: new Uint8Array(16) });
+
+export { length, bytes, hex, v4Hex, v7Hex, plain };
+`
+	);
+
+	// Default flavour: without the "node" condition (bundler resolution, browsers) the byte
+	// container is a plain Uint8Array, so Buffer-only APIs must not compile.
+	writeFileSync(
+		path.join(consumerDir, "bundler-bytes.mts"),
+		`import { UUID } from "@cldmv/uuid";
+
+const length: number = UUID.v4().length;
+const bytes: Uint8Array = UUID.TA().toBuffer();
+const written: Uint8Array = UUID.v4({ buf: new Uint8Array(16) });
+
+export { length, bytes, written };
+`
+	);
+
+	writeFileSync(
+		path.join(consumerDir, "bundler-wrong.mts"),
+		`import { UUID } from "@cldmv/uuid";
+
+const hex: string = UUID.TA().toBuffer().toString("hex");
+const first: number = UUID.TA().toBuffer().readUInt8(0);
+const written: string = UUID.v4({ buf: new Uint8Array(16) }).toString("hex");
+
+export { hex, first, written };
+`
+	);
+
 	writeFileSync(
 		path.join(consumerDir, "wrong.mts"),
 		`import { UUID } from "@cldmv/uuid";
@@ -197,11 +243,45 @@ after(() => {
 	rmSync(workDir, { recursive: true, force: true });
 });
 
-test("the main entry and ./main type-check without @types/node", () => {
-	// types: [] keeps @types/node out, so this also shows the UUID declarations do not
-	// depend on Node-only globals such as Buffer (the package also runs in browsers).
-	const { status, output } = compile("main", ["main.mts"], []);
+/** Compiler options for a bundler-resolution (browser/bundler) consumer. */
+const bundler = { module: "esnext", moduleResolution: "bundler" };
+
+test("the main entry and ./main type-check under nodenext with @types/node", () => {
+	const { status, output } = compile("main", ["main.mts"], ["node"]);
 	assert.equal(status, 0, output);
+});
+
+test("the main entry and ./main type-check under bundler resolution without @types/node", () => {
+	// types: [] keeps @types/node out, so this also shows the default (non-Node) declarations
+	// do not depend on Node-only globals such as Buffer (the package also runs in browsers).
+	const { status, output } = compile("main-bundler", ["main.mts"], [], bundler);
+	assert.equal(status, 0, output);
+});
+
+test("under nodenext the byte returns are Buffers", () => {
+	// The "node" condition serves the Node flavour: toBuffer() returns a Buffer, and a buf
+	// overload returns the buffer it was given, so Buffer-only APIs compile.
+	const { status, output } = compile("node", ["node.mts"], ["node"], { explainFiles: true });
+	assert.equal(status, 0, output);
+	assert.match(output, /typings\/bytes-node\.d\.mts\n/, "expected #bytes-type to resolve to the Node flavour");
+	assert.doesNotMatch(output, /typings\/bytes\.d\.mts\n/, output);
+});
+
+test("under bundler resolution the byte returns are plain Uint8Arrays", () => {
+	const { status, output } = compile("bundler-bytes", ["bundler-bytes.mts"], [], { ...bundler, explainFiles: true });
+	assert.equal(status, 0, output);
+	assert.match(output, /typings\/bytes\.d\.mts\n/, "expected #bytes-type to resolve to the default flavour");
+	assert.doesNotMatch(output, /typings\/bytes-node\.d\.mts\n/, output);
+});
+
+test("under bundler resolution Buffer-only methods on the byte returns fail to compile", () => {
+	// If the default flavour leaked Buffer, these would compile.
+	const { status, output } = compile("bundler-wrong", ["bundler-wrong.mts"], [], bundler);
+	assert.notEqual(status, 0, "expected tsc to reject Buffer-only methods on a Uint8Array");
+	assert.match(output, /bundler-wrong\.mts\(3,51\): error TS2554: Expected 0 arguments, but got 1\./);
+	assert.match(output, /bundler-wrong\.mts\(4,44\): error TS2339: Property 'readUInt8' does not exist on type 'Bytes'\./);
+	assert.match(output, /bundler-wrong\.mts\(5,71\): error TS2554: Expected 0 arguments, but got 1\./);
+	assert.equal(output.trim().split("\n").filter((line) => /error TS\d+/.test(line)).length, 3, output);
 });
 
 test("the README TypeScript example type-checks", () => {
@@ -220,7 +300,9 @@ test("the ./rng, ./bytes and ./hash subpaths type-check", () => {
 test("the browser variants of ./rng, ./bytes and ./hash type-check without @types/node", () => {
 	// With the "browser" condition the browser declarations are picked, which return plain
 	// Uint8Arrays and must not need Node's globals.
-	const { status, output } = compile("browser", ["subpaths.mts"], [], { customConditions: ["browser"] });
+	// main.mts is included too: with "browser" the main entry gets the Uint8Array flavour even
+	// under nodenext, so it compiles without @types/node.
+	const { status, output } = compile("browser", ["subpaths.mts", "main.mts"], [], { customConditions: ["browser"] });
 	assert.equal(status, 0, output);
 });
 

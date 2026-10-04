@@ -56,6 +56,15 @@
 		},
 		"./package.json": "./package.json"
 	},
+	"imports": {
+		"#bytes-type": {
+			"types": {
+				"browser": "./typings/bytes.d.mts",
+				"node": "./typings/bytes-node.d.mts",
+				"default": "./typings/bytes.d.mts"
+			}
+		}
+	},
 	"type": "module",
 	"engines": {
 		"node": ">=16.12.0"
@@ -126,6 +135,7 @@
 		"types/dist/",
 		"types/index.d.mts",
 		"types/index.d.mts.map",
+		"typings/",
 		"dist/"
 	],
 	"sideEffects": false,

@@ -45,6 +45,13 @@ import {
 import * as rfcUuids from "./lib/versions/rfc/index.mjs";
 
 /**
+ * The byte container toBuffer() returns: a Buffer in Node, a plain Uint8Array elsewhere.
+ * `#bytes-type` (package.json `imports`) resolves to a Buffer alias under the `node`
+ * condition and to a Uint8Array alias otherwise.
+ * @typedef {import("#bytes-type").Bytes} Bytes
+ */
+
+/**
  * Options shared by the RFC generators that can write into a caller-supplied buffer.
  * @typedef {object} RFCBufferOptions
  * @property {Uint8Array} [buf] - Buffer to write the UUID into; when given, the generator returns it instead of a string
@@ -566,7 +573,7 @@ class UUID {
 
 	/**
 	 * Convert UUID to buffer
-	 * @returns {Uint8Array} UUID as a 16-byte copy: a Node Buffer (a Uint8Array subclass) in Node, a plain Uint8Array in environments without Buffer
+	 * @returns {Bytes} UUID as a 16-byte copy: a Node Buffer (a Uint8Array subclass) in Node, a plain Uint8Array in environments without Buffer
 	 */
 	toBuffer() {
 		return toBufferLike(this._buffer);
@@ -714,9 +721,10 @@ class UUID {
 	 */
 	/**
 	 * Generate a version 1 (timestamp) UUID, written into `options.buf`
+	 * @template {Uint8Array} T
 	 * @overload
-	 * @param {TimeOptions & { buf: Uint8Array }} options - Options with the buffer to write into
-	 * @returns {Uint8Array} `options.buf`
+	 * @param {TimeOptions & { buf: T }} options - Options with the buffer to write into
+	 * @returns {T} `options.buf` itself, so its type is kept (a Buffer stays a Buffer)
 	 */
 	/**
 	 * Generate a version 1 (timestamp) UUID
@@ -745,9 +753,10 @@ class UUID {
 	 */
 	/**
 	 * Generate a version 4 (random) UUID, written into `options.buf`
+	 * @template {Uint8Array} T
 	 * @overload
-	 * @param {V4Options & { buf: Uint8Array }} options - Options with the buffer to write into
-	 * @returns {Uint8Array} `options.buf`
+	 * @param {V4Options & { buf: T }} options - Options with the buffer to write into
+	 * @returns {T} `options.buf` itself, so its type is kept (a Buffer stays a Buffer)
 	 */
 	/**
 	 * Generate a version 4 (random) UUID
@@ -776,9 +785,10 @@ class UUID {
 	 */
 	/**
 	 * Generate a version 6 (timestamp, reordered) UUID, written into `options.buf`
+	 * @template {Uint8Array} T
 	 * @overload
-	 * @param {TimeOptions & { buf: Uint8Array }} options - Options with the buffer to write into
-	 * @returns {Uint8Array} `options.buf`
+	 * @param {TimeOptions & { buf: T }} options - Options with the buffer to write into
+	 * @returns {T} `options.buf` itself, so its type is kept (a Buffer stays a Buffer)
 	 */
 	/**
 	 * Generate a version 6 (timestamp, reordered) UUID
@@ -797,9 +807,10 @@ class UUID {
 	 */
 	/**
 	 * Generate a version 7 (Unix Epoch) UUID, written into `options.buf`
+	 * @template {Uint8Array} T
 	 * @overload
-	 * @param {V7Options & { buf: Uint8Array }} options - Options with the buffer to write into
-	 * @returns {Uint8Array} `options.buf`
+	 * @param {V7Options & { buf: T }} options - Options with the buffer to write into
+	 * @returns {T} `options.buf` itself, so its type is kept (a Buffer stays a Buffer)
 	 */
 	/**
 	 * Generate a version 7 (Unix Epoch) UUID
@@ -818,9 +829,10 @@ class UUID {
 	 */
 	/**
 	 * Generate a version 8 (custom/experimental) UUID, written into `options.buf`
+	 * @template {Uint8Array} T
 	 * @overload
-	 * @param {V8Options & { buf: Uint8Array }} options - Options with the buffer to write into
-	 * @returns {Uint8Array} `options.buf`
+	 * @param {V8Options & { buf: T }} options - Options with the buffer to write into
+	 * @returns {T} `options.buf` itself, so its type is kept (a Buffer stays a Buffer)
 	 */
 	/**
 	 * Generate a version 8 (custom/experimental) UUID
