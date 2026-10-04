@@ -205,6 +205,16 @@ export { length, bytes, hex, v4Hex, v7Hex, plain };
 	// Default flavour: without the "node" condition (bundler resolution, browsers) the byte
 	// container is a plain Uint8Array, so Buffer-only APIs must not compile.
 	writeFileSync(
+		path.join(consumerDir, "node-no-types.mts"),
+		`import { UUID } from "@cldmv/uuid";
+const id: string = UUID.v4();
+const bytes: Uint8Array = UUID.TA().toBuffer();
+const env = process.env;
+export { id, bytes, env };
+`
+	);
+
+	writeFileSync(
 		path.join(consumerDir, "bundler-bytes.mts"),
 		`import { UUID } from "@cldmv/uuid";
 
@@ -265,6 +275,16 @@ test("under nodenext the byte returns are Buffers", () => {
 	assert.equal(status, 0, output);
 	assert.match(output, /typings\/bytes-node\.d\.mts\n/, "expected #bytes-type to resolve to the Node flavour");
 	assert.doesNotMatch(output, /typings\/bytes\.d\.mts\n/, output);
+});
+
+test("under nodenext without @types/node the package does not pull in Node globals", () => {
+	// The Node flavour must read Buffer from the global scope rather than reference
+	// @types/node: a Node project without @types/node still compiles against the package,
+	// and importing it does not make Node globals such as \`process\` appear.
+	const { status, output } = compile("node-no-types", ["node-no-types.mts"], []);
+	assert.notEqual(status, 0, "expected tsc to reject the Node global");
+	assert.match(output, /node-no-types\.mts\(4,\d+\): error TS2(580|591)/, output);
+	assert.equal(output.trim().split("\n").filter((line) => /error TS\d+/.test(line)).length, 1, output);
 });
 
 test("under bundler resolution the byte returns are plain Uint8Arrays", () => {
