@@ -29,8 +29,8 @@ import { parse, stringify } from "./utils.mjs";
  * @param {string|Uint8Array} namespace - Namespace UUID
  * @param {number} versionByte - Version byte (0x30 for v3, 0x50 for v5)
  * @param {Function} hashFn - Isomorphic hash function (md5 or sha1), signature (namespaceBytes, name)
- * @param {Uint8Array} buf - Optional buffer to write into
- * @param {number} offset - Optional offset in buffer
+ * @param {Uint8Array} [buf] - Optional buffer to write into; when given, it is returned instead of a string
+ * @param {number} [offset] - Optional offset in buffer
  * @returns {string|Uint8Array} UUID string or buffer
  * @private
  */
@@ -67,8 +67,8 @@ function _v35(name, namespace, versionByte, hashFn, buf, offset) {
  * Create a version 3 (namespace with MD5) UUID
  * @param {string} name - Name to hash
  * @param {string|Uint8Array} namespace - Namespace UUID
- * @param {Uint8Array} buf - Optional buffer to write into
- * @param {number} offset - Optional offset in buffer
+ * @param {Uint8Array} [buf] - Optional buffer to write into; when given, it is returned instead of a string
+ * @param {number} [offset] - Optional offset in buffer
  * @returns {string|Uint8Array} UUID string or buffer
  */
 export function v3(name, namespace, buf, offset) {
@@ -79,8 +79,8 @@ export function v3(name, namespace, buf, offset) {
  * Create a version 5 (namespace with SHA-1) UUID
  * @param {string} name - Name to hash
  * @param {string|Uint8Array} namespace - Namespace UUID
- * @param {Uint8Array} buf - Optional buffer to write into
- * @param {number} offset - Optional offset in buffer
+ * @param {Uint8Array} [buf] - Optional buffer to write into; when given, it is returned instead of a string
+ * @param {number} [offset] - Optional offset in buffer
  * @returns {string|Uint8Array} UUID string or buffer
  */
 export function v5(name, namespace, buf, offset) {
