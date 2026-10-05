@@ -140,7 +140,7 @@
 	],
 	"sideEffects": false,
 	"devDependencies": {
-		"@cldmv/configs": "^1.2.1",
+		"@cldmv/configs": "^1.2.4",
 		"@cldmv/fix-headers": "^2.2.0",
 		"@cldmv/vitest-runner": "^1.2.0",
 		"@types/node": "^26.6.4",
