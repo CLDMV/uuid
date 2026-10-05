@@ -18,6 +18,7 @@ The custom variants (`TA`, `TB`, `IA`) live in the variant `111` namespace, so t
 
 - **`require()` works**: the CommonJS entry failed to load in every earlier release, because the ESM entry it wraps used top-level `await`, which Node's synchronous `require(esm)` rejects with `ERR_REQUIRE_ASYNC_MODULE`. The entry no longer uses top-level `await`, so `require("@cldmv/uuid")` now returns the same `UUID` object as `import` on Node.js ^20.19.0 or >=22.12.0, and older versions get a clear error that points to `import()`. ESM behavior and the exported names are unchanged ([#50](https://github.com/CLDMV/uuid/pull/50)).
 - **Real TypeScript types**: `UUID` used to resolve to `any`. The package and its subpaths now ship accurate declarations, with optional generator options and `toBuffer()` typed as `Buffer` in Node projects and `Uint8Array` in browser and bundler projects ([#55](https://github.com/CLDMV/uuid/pull/55)). The repository also gains its Apache-2.0 `LICENSE` file ([#54](https://github.com/CLDMV/uuid/pull/54)).
+- **Dev toolchain**: `@cldmv/fix-headers` 2.2.0 (`@Last modified by` now follows content edits only), `@cldmv/configs` 1.2.4 and a new `@types/node` dev dependency for the type tests, all dev-only; no file headers were restamped ([#55](https://github.com/CLDMV/uuid/pull/55), [#57](https://github.com/CLDMV/uuid/pull/57), [#59](https://github.com/CLDMV/uuid/pull/59)).
 - [View full v1.2.5 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.5.md)
 
 ### Recent Releases
