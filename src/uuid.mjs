@@ -45,6 +45,42 @@ import {
 import * as rfcUuids from "./lib/versions/rfc/index.mjs";
 
 /**
+ * The byte container toBuffer() returns: a Buffer in Node, a plain Uint8Array elsewhere.
+ * `#bytes-type` (package.json `imports`) resolves to a Buffer alias under the `node`
+ * condition and to a Uint8Array alias otherwise.
+ * @typedef {import("#bytes-type").Bytes} Bytes
+ */
+
+/**
+ * Options shared by the RFC generators that can write into a caller-supplied buffer.
+ * @typedef {object} RFCBufferOptions
+ * @property {Uint8Array} [buf] - Buffer to write the UUID into; when given, the generator returns it instead of a string
+ * @property {number} [offset] - Offset in `buf` to start writing at (default 0)
+ */
+
+/**
+ * Options for {@link UUID.v1} and {@link UUID.v6}. `node` is the 6-byte node id (MAC address),
+ * `clockseq` the 14-bit clock sequence, `msecs` the timestamp in milliseconds since the Unix
+ * epoch, and `nsecs` additional 100-nanosecond intervals.
+ * @typedef {RFCBufferOptions & { node?: ArrayLike<number>, clockseq?: number, msecs?: number, nsecs?: number }} TimeOptions
+ */
+
+/**
+ * Options for {@link UUID.v4}. `random` supplies the 16 random bytes instead of generating them.
+ * @typedef {RFCBufferOptions & { random?: Uint8Array }} V4Options
+ */
+
+/**
+ * Options for {@link UUID.v7}. `msecs` is the timestamp in milliseconds since the Unix epoch.
+ * @typedef {RFCBufferOptions & { msecs?: number }} V7Options
+ */
+
+/**
+ * Options for {@link UUID.v8}. `data` supplies the 16 bytes of custom data instead of random bytes.
+ * @typedef {RFCBufferOptions & { data?: Uint8Array }} V8Options
+ */
+
+/**
  * UUID class implementing the new specification
  */
 class UUID {
@@ -53,6 +89,11 @@ class UUID {
 	 * @param {Uint8Array|string|null} data - Optional UUID data to parse
 	 */
 	constructor(data = null) {
+		/**
+		 * The 16 UUID bytes.
+		 * @type {Uint8Array}
+		 * @private
+		 */
 		this._buffer = new Uint8Array(16);
 
 		if (data !== null && data !== undefined) {
@@ -87,7 +128,7 @@ class UUID {
 	 * Create a new Issuer Variant UUID
 	 * @param {number} issuerID - Issuer ID (0-ISSUER_ID_MASK)
 	 * @param {number} version - Version number
-	 * @param {Uint8Array} entropy - Additional entropy data
+	 * @param {Uint8Array|null} [entropy] - Additional entropy data
 	 * @returns {UUID} New UUID instance
 	 */
 	static createIssuerVariant(issuerID, version, entropy = null) {
@@ -121,9 +162,9 @@ class UUID {
 
 	/**
 	 * Create a new Timestamp Variant UUID
-	 * @param {number|Date} timestamp - Timestamp value (optional, defaults to Date.now())
+	 * @param {number|Date|null|undefined} timestamp - Timestamp value (null/undefined defaults to the current time)
 	 * @param {number} version - Version number
-	 * @param {Uint8Array} entropy - Optional entropy for bits 79-127
+	 * @param {Uint8Array|null} [entropy] - Optional entropy for bits 79-127
 	 * @returns {UUID} New UUID instance
 	 */
 	static createTimestampVariant(timestamp, version, entropy = null) {
@@ -192,7 +233,7 @@ class UUID {
 	 * Create an issuer-based UUID (short name alias)
 	 * @param {number} issuerID - Issuer ID (0-1023)
 	 * @param {number} version - Version number
-	 * @param {Uint8Array} entropy - Additional entropy data
+	 * @param {Uint8Array|null} [entropy] - Additional entropy data
 	 * @returns {UUID} New UUID instance
 	 */
 	static issuer(issuerID, version, entropy = null) {
@@ -201,9 +242,9 @@ class UUID {
 
 	/**
 	 * Create a timestamp-based UUID (short name alias)
-	 * @param {number|Date} timestamp - Timestamp value (optional, defaults to Date.now())
+	 * @param {number|Date|null|undefined} timestamp - Timestamp value (null/undefined defaults to the current time)
 	 * @param {number} version - Version number
-	 * @param {Uint8Array} entropy - Optional entropy for bits 79-127
+	 * @param {Uint8Array|null} [entropy] - Optional entropy for bits 79-127
 	 * @returns {UUID} New UUID instance
 	 */
 	static timestamp(timestamp, version, entropy = null) {
@@ -213,8 +254,8 @@ class UUID {
 	/**
 	 * Create Timestamp Variant v1 UUID (ultra-short alias)
 	 * Subvariant 00 - Timestamp-based identification (seconds precision)
-	 * @param {number|Date} timestamp - Timestamp value (optional, defaults to Date.now())
-	 * @param {Uint8Array} entropy - Optional entropy for bits 79-127
+	 * @param {number|Date|null} [timestamp] - Timestamp value (optional, defaults to the current time)
+	 * @param {Uint8Array|null} [entropy] - Optional entropy for bits 79-127
 	 * @returns {UUID} New UUID instance
 	 */
 	static TA(timestamp, entropy = null) {
@@ -225,7 +266,7 @@ class UUID {
 	 * Create Issuer Variant v1 UUID (ultra-short alias)
 	 * Subvariant 01 - Issuer-based identification
 	 * @param {number} issuerID - Issuer ID (0-1023)
-	 * @param {Uint8Array} entropy - Additional entropy data
+	 * @param {Uint8Array|null} [entropy] - Additional entropy data
 	 * @returns {UUID} New UUID instance
 	 */
 	static IA(issuerID, entropy = null) {
@@ -235,8 +276,8 @@ class UUID {
 	/**
 	 * Create Timestamp Variant v2 UUID (ultra-short alias)
 	 * Subvariant 00 - Timestamp-based identification (milliseconds precision)
-	 * @param {number|Date} timestamp - Timestamp value (optional, defaults to Date.now())
-	 * @param {Uint8Array} entropy - Optional entropy for bits 79-127
+	 * @param {number|Date|null} [timestamp] - Timestamp value (optional, defaults to the current time)
+	 * @param {Uint8Array|null} [entropy] - Optional entropy for bits 79-127
 	 * @returns {UUID} New UUID instance
 	 */
 	static TB(timestamp, entropy = null) {
@@ -286,7 +327,7 @@ class UUID {
 
 	/**
 	 * Fill remaining bits with entropy while preserving immutable fields
-	 * @param {Uint8Array} entropy - Entropy data
+	 * @param {Uint8Array|null} [entropy] - Entropy data
 	 * @private
 	 */
 	_fillEntropy(entropy) {
@@ -532,7 +573,7 @@ class UUID {
 
 	/**
 	 * Convert UUID to buffer
-	 * @returns {Buffer} UUID as 16-byte buffer (Node); a Uint8Array copy in environments without Buffer
+	 * @returns {Bytes} UUID as a 16-byte copy: a Node Buffer (a Uint8Array subclass) in Node, a plain Uint8Array in environments without Buffer
 	 */
 	toBuffer() {
 		return toBufferLike(this._buffer);
@@ -605,7 +646,7 @@ class UUID {
 
 	/**
 	 * Get the shared issuer registry instance
-	 * @returns {Promise<IssuerRegistry>} Shared registry instance
+	 * @returns {Promise<import("./lib/issuer-registry.mjs").IssuerRegistry>} Shared registry instance
 	 */
 	static async getRegistry() {
 		if (!UUID._registryInstance) {
@@ -674,8 +715,21 @@ class UUID {
 
 	/**
 	 * Generate a version 1 (timestamp) UUID
-	 * @param {Object} options - Optional parameters
+	 * @overload
+	 * @param {TimeOptions & { buf?: undefined }} [options] - Optional parameters
 	 * @returns {string} UUID string
+	 */
+	/**
+	 * Generate a version 1 (timestamp) UUID, written into `options.buf`
+	 * @template {Uint8Array} T
+	 * @overload
+	 * @param {TimeOptions & { buf: T }} options - Options with the buffer to write into
+	 * @returns {T} `options.buf` itself, so its type is kept (a Buffer stays a Buffer)
+	 */
+	/**
+	 * Generate a version 1 (timestamp) UUID
+	 * @param {TimeOptions} [options] - Optional parameters
+	 * @returns {string|Uint8Array} UUID string, or `options.buf` when one is given
 	 */
 	static v1(options) {
 		return rfcUuids.v1(options);
@@ -693,8 +747,21 @@ class UUID {
 
 	/**
 	 * Generate a version 4 (random) UUID
-	 * @param {Object} options - Optional parameters
+	 * @overload
+	 * @param {V4Options & { buf?: undefined }} [options] - Optional parameters
 	 * @returns {string} UUID string
+	 */
+	/**
+	 * Generate a version 4 (random) UUID, written into `options.buf`
+	 * @template {Uint8Array} T
+	 * @overload
+	 * @param {V4Options & { buf: T }} options - Options with the buffer to write into
+	 * @returns {T} `options.buf` itself, so its type is kept (a Buffer stays a Buffer)
+	 */
+	/**
+	 * Generate a version 4 (random) UUID
+	 * @param {V4Options} [options] - Optional parameters
+	 * @returns {string|Uint8Array} UUID string, or `options.buf` when one is given
 	 */
 	static v4(options) {
 		return rfcUuids.v4(options);
@@ -712,8 +779,21 @@ class UUID {
 
 	/**
 	 * Generate a version 6 (timestamp, reordered) UUID
-	 * @param {Object} options - Optional parameters
+	 * @overload
+	 * @param {TimeOptions & { buf?: undefined }} [options] - Optional parameters
 	 * @returns {string} UUID string
+	 */
+	/**
+	 * Generate a version 6 (timestamp, reordered) UUID, written into `options.buf`
+	 * @template {Uint8Array} T
+	 * @overload
+	 * @param {TimeOptions & { buf: T }} options - Options with the buffer to write into
+	 * @returns {T} `options.buf` itself, so its type is kept (a Buffer stays a Buffer)
+	 */
+	/**
+	 * Generate a version 6 (timestamp, reordered) UUID
+	 * @param {TimeOptions} [options] - Optional parameters
+	 * @returns {string|Uint8Array} UUID string, or `options.buf` when one is given
 	 */
 	static v6(options) {
 		return rfcUuids.v6(options);
@@ -721,8 +801,21 @@ class UUID {
 
 	/**
 	 * Generate a version 7 (Unix Epoch) UUID
-	 * @param {Object} options - Optional parameters
+	 * @overload
+	 * @param {V7Options & { buf?: undefined }} [options] - Optional parameters
 	 * @returns {string} UUID string
+	 */
+	/**
+	 * Generate a version 7 (Unix Epoch) UUID, written into `options.buf`
+	 * @template {Uint8Array} T
+	 * @overload
+	 * @param {V7Options & { buf: T }} options - Options with the buffer to write into
+	 * @returns {T} `options.buf` itself, so its type is kept (a Buffer stays a Buffer)
+	 */
+	/**
+	 * Generate a version 7 (Unix Epoch) UUID
+	 * @param {V7Options} [options] - Optional parameters
+	 * @returns {string|Uint8Array} UUID string, or `options.buf` when one is given
 	 */
 	static v7(options) {
 		return rfcUuids.v7(options);
@@ -730,8 +823,21 @@ class UUID {
 
 	/**
 	 * Generate a version 8 (custom/experimental) UUID
-	 * @param {Object} options - Optional parameters
+	 * @overload
+	 * @param {V8Options & { buf?: undefined }} [options] - Optional parameters
 	 * @returns {string} UUID string
+	 */
+	/**
+	 * Generate a version 8 (custom/experimental) UUID, written into `options.buf`
+	 * @template {Uint8Array} T
+	 * @overload
+	 * @param {V8Options & { buf: T }} options - Options with the buffer to write into
+	 * @returns {T} `options.buf` itself, so its type is kept (a Buffer stays a Buffer)
+	 */
+	/**
+	 * Generate a version 8 (custom/experimental) UUID
+	 * @param {V8Options} [options] - Optional parameters
+	 * @returns {string|Uint8Array} UUID string, or `options.buf` when one is given
 	 */
 	static v8(options) {
 		return rfcUuids.v8(options);
@@ -748,7 +854,7 @@ class UUID {
 
 	/**
 	 * Convert byte array to UUID string
-	 * @param {Uint8Array|Buffer|Array} bytes - 16-byte array
+	 * @param {ArrayLike<number>} bytes - 16-byte array (Uint8Array, Buffer or plain array)
 	 * @returns {string} UUID string
 	 */
 	static stringify(bytes) {
@@ -766,7 +872,7 @@ class UUID {
 
 	/**
 	 * Detect version/variant identifier of UUID (handles both RFC and custom variants)
-	 * @param {string|Buffer|UUID} uuid - UUID string, buffer, or UUID instance
+	 * @param {string|Uint8Array|UUID} uuid - UUID string, buffer, or UUID instance
 	 * @returns {string|number|null} Version identifier (e.g., "TA", "TB", "IA" for custom, 1-8 for RFC, or null if invalid)
 	 * @example
 	 * UUID.version(uuidString); // => "TA" for Timestamp v1
@@ -795,7 +901,7 @@ class UUID {
 
 	/**
 	 * Detect variant identifier (alias for version())
-	 * @param {string|Buffer|UUID} uuid - UUID string, buffer, or UUID instance
+	 * @param {string|Uint8Array|UUID} uuid - UUID string, buffer, or UUID instance
 	 * @returns {string|number|null} Version identifier
 	 * @deprecated Use UUID.version() instead
 	 */

@@ -24,10 +24,10 @@ import { stringify } from "./utils.mjs";
 
 /**
  * Create a version 4 (random) UUID
- * @param {Object} options - Optional parameters
- * @param {Uint8Array} options.random - 16 random bytes
- * @param {Uint8Array} options.buf - Buffer to write UUID into
- * @param {number} options.offset - Offset in buffer to start writing
+ * @param {object} [options] - Optional parameters
+ * @param {Uint8Array} [options.random] - 16 random bytes
+ * @param {Uint8Array} [options.buf] - Buffer to write UUID into; when given, it is returned instead of a string
+ * @param {number} [options.offset] - Offset in buffer to start writing
  * @returns {string|Uint8Array} UUID string or buffer
  */
 export function v4(options = {}) {
