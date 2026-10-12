@@ -14,19 +14,17 @@ The custom variants (`TA`, `TB`, `IA`) live in the variant `111` namespace, so t
 
 ## ✨ What's New
 
-### Latest: v1.2.5 (October 2026)
+### Latest: v1.2.6 (October 2026)
 
-- **`require()` works**: the CommonJS entry failed to load in every earlier release, because the ESM entry it wraps used top-level `await`, which Node's synchronous `require(esm)` rejects with `ERR_REQUIRE_ASYNC_MODULE`. The entry no longer uses top-level `await`, so `require("@cldmv/uuid")` now returns the same `UUID` object as `import` on Node.js ^20.19.0 or >=22.12.0, and older versions get a clear error that points to `import()`. ESM behavior and the exported names are unchanged ([#50](https://github.com/CLDMV/uuid/pull/50)).
-- **Real TypeScript types**: `UUID` used to resolve to `any`. The package and its subpaths now ship accurate declarations, with optional generator options and `toBuffer()` typed as `Buffer` in Node projects and `Uint8Array` in browser and bundler projects ([#55](https://github.com/CLDMV/uuid/pull/55)). The repository also gains its Apache-2.0 `LICENSE` file ([#54](https://github.com/CLDMV/uuid/pull/54)).
-- **Dev toolchain**: `@cldmv/fix-headers` 2.2.0 (`@Last modified by` now follows content edits only), `@cldmv/configs` 1.2.4 and a new `@types/node` dev dependency for the type tests, all dev-only; no file headers were restamped ([#55](https://github.com/CLDMV/uuid/pull/55), [#57](https://github.com/CLDMV/uuid/pull/57), [#59](https://github.com/CLDMV/uuid/pull/59)).
-- [View full v1.2.5 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.5.md)
+- **Test toolchain update**: `vitest` 5.0.3 and `@cldmv/vitest-runner` 1.5.3, dev-only. No runtime code changed. Running the test suite locally now needs Node.js 22.12 or newer ([#61](https://github.com/CLDMV/uuid/pull/61), [#64](https://github.com/CLDMV/uuid/pull/64)).
+- [View full v1.2.6 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.6.md)
 
 ### Recent Releases
 
+- **v1.2.5** (October 2026): `require()` works, real TypeScript types, and the Apache-2.0 `LICENSE` file ([#50](https://github.com/CLDMV/uuid/pull/50), [#54](https://github.com/CLDMV/uuid/pull/54), [#55](https://github.com/CLDMV/uuid/pull/55)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.5.md))
 - **v1.2.4** (October 2026): dev tooling only, moves header maintenance to the shared CLDMV fix-headers config and stops the in-repo PR mirror check from reporting as skipped, no runtime change ([#46](https://github.com/CLDMV/uuid/pull/46), [#47](https://github.com/CLDMV/uuid/pull/47)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.4.md))
 - **v1.2.3** (October 2026): release tooling only, syncs the workflows with the `CLDMV/.github` v4.29.2 templates and adds a bundle-size check, no runtime change ([#37](https://github.com/CLDMV/uuid/pull/37), [#38](https://github.com/CLDMV/uuid/pull/38)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.3.md))
 - **v1.2.2** (September 2026): dev-only bump of `@cldmv/fix-headers` from 1.3.9 to 1.3.11, no runtime change ([#31](https://github.com/CLDMV/uuid/pull/31)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.2.md))
-- **v1.2.1** (September 2026): CI only, passes `BOT_NAME` / `BOT_EMAIL` to the v4 release and feature-PR workflows, no runtime change ([#27](https://github.com/CLDMV/uuid/pull/27)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.1.md))
 
 📚 **For complete version history and detailed release notes, see the [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/) folder.**
 
