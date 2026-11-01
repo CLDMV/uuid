@@ -62,8 +62,9 @@ The specification is designed for formal RFC submission and includes comprehensi
 
 ### Requirements
 
-- **ESM (`import`)**: Node.js v16.12.0 or higher (the package's `engines.node` floor), or any modern browser bundler through the `browser` export condition.
-- **CommonJS (`require()`)**: Node.js ^20.19.0 or >=22.13.0. `index.cjs` loads the ESM entry through Node's synchronous `require(esm)`, which older versions don't have; on those, load the package with `import()` instead.
+- **Node.js**: ^20.19.0 or >=22.13.0 (the package's `engines.node` floor), for both `import` and `require()`. Any modern browser bundler works too, through the `browser` export condition.
+- **CommonJS (`require()`)**: `dist/index.cjs` is a few lines that load the ESM build through Node's synchronous `require(esm)`, so `require()` and `import` return the same objects. Node.js versions without `require(esm)` get a clear `ERR_REQUIRE_ESM` error; on those, load the package with `import()` instead.
+- **`@cldmv/uuid/main`** is a deprecated alias of the package root. It exports the same objects and prints a one-time `DeprecationWarning` (code `CLDMV_UUID_MAIN`); import `@cldmv/uuid` instead. It will be removed in the next major version.
 
 ### Install
 
@@ -988,12 +989,34 @@ Timestamp Information:
 
 ## 🧪 Development & Testing
 
+### Source layout
+
+The code lives in `src/`. `npm run build` bundles it with tsup into `dist/`, which is what the package publishes (`dist/` is gitignored and rebuilt by `prepack`):
+
+- `src/index.mjs` → `dist/index.mjs`: the ESM entry.
+- `src/index.cjs` → `dist/index.cjs`: the CommonJS entry, copied verbatim. It `require()`s the sibling `index.mjs`.
+- `src/main.mjs` → `dist/main.mjs`: the deprecated `./main` alias, which imports `./index.mjs`.
+- `src/lib/{rng,bytes,hash}{,-browser}.mjs` → `dist/lib/`: the `./rng`, `./bytes` and `./hash` subpaths.
+
+`npm run types:build` regenerates the declarations in `types/src/`.
+
+In a checkout, the package resolves to `dist/` by default. The `uuid-dev` export condition switches it to `src/`, so you can run the source without building:
+
+```bash
+node --conditions=uuid-dev app.mjs
+# or once per shell
+export NODE_OPTIONS=--conditions=uuid-dev
+```
+
+The test suites run against `src/` through this condition.
+
 ### Running Tests
 
 ```bash
-npm test                 # Run all tests (Vitest suites, then the CommonJS entry tests)
+npm test                 # Run all tests (Vitest suites, then the entry and type tests)
 npm run test:watch       # Watch mode
-npm run test:cjs         # CommonJS entry tests only (Node's built-in test runner)
+npm run test:cjs         # Build, then check the dist/ and src/ entries (Node's built-in test runner)
+npm run test:types       # Build, then type-check a packed consumer project
 npm run coverage         # With coverage
 ```
 
