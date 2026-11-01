@@ -1,4 +1,4 @@
-import { UUID } from "@cldmv/uuid/main";
-import { ISSUER_CATEGORIES } from "@cldmv/uuid/main";
+import { UUID } from "./uuid.mjs";
+import { ISSUER_CATEGORIES } from "./uuid.mjs";
 export { UUID as default, UUID, UUID as uuid, ISSUER_CATEGORIES };
 //# sourceMappingURL=index.d.mts.map

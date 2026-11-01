@@ -9,7 +9,7 @@ export class IssuerRegistry {
      */
     private _initializeReservedIDs;
     /**
-     * Load issuers from JSON file
+     * Load the issuers listed in data/issuers.json
      * @private
      */
     private _loadIssuersFromFile;

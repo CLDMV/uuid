@@ -6,7 +6,7 @@
 #	@Email: <Shinrai@users.noreply.github.com>
 #	-----
 #	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
-#	@Last modified time: 2026-10-02T15:33:22-07:00 (1790980402)
+#	@Last modified time: 2026-11-01T12:13:39-08:00 (1793564019)
 #	-----
 #	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
 #
@@ -39,8 +39,8 @@ jobs:
         uses: CLDMV/.github/.github/workflows/reusable-bundle-size.yml@v4
         with:
             build_command: "npm run build:ci"
-            # Every glob starts with "*": the measure step walks only the path before the first "*" (a bare file path matches nothing), and one shared root keeps files from being counted twice.
-            dist_paths: "*index.mjs,*index.cjs,*dist/**"
+            # The published JS: tsup's dist/ output (source maps are not published). Both globs share the dist/ root, so no file is counted twice.
+            dist_paths: "dist/**.mjs,dist/**.cjs"
             # warning_pct: 5
             # warning_bytes: 500
             # comment_mode: "update"
