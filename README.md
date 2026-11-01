@@ -63,7 +63,7 @@ The specification is designed for formal RFC submission and includes comprehensi
 ### Requirements
 
 - **ESM (`import`)**: Node.js v16.12.0 or higher (the package's `engines.node` floor), or any modern browser bundler through the `browser` export condition.
-- **CommonJS (`require()`)**: Node.js ^20.19.0 or >=22.12.0. `index.cjs` loads the ESM entry through Node's synchronous `require(esm)`, which older versions don't have; on those, load the package with `import()` instead.
+- **CommonJS (`require()`)**: Node.js ^20.19.0 or >=22.13.0. `index.cjs` loads the ESM entry through Node's synchronous `require(esm)`, which older versions don't have; on those, load the package with `import()` instead.
 
 ### Install
 
@@ -146,7 +146,7 @@ if (UUID.validateRFC(v4)) {
 }
 ```
 
-CommonJS works the same way on Node.js ^20.19.0 or >=22.12.0:
+CommonJS works the same way on Node.js ^20.19.0 or >=22.13.0:
 
 ```javascript
 const UUID = require("@cldmv/uuid"); // also UUID.UUID, UUID.uuid, UUID.ISSUER_CATEGORIES
