@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:31-07:00 (1790980411)
+ *	@Last modified time: 2026-11-01T12:13:42-08:00 (1793564022)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -21,12 +21,9 @@
  */
 
 import { ISSUER_CATEGORIES, ISSUER_ID_MASK } from "./constants.mjs";
-import { readFileSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// A static JSON import, so the bundler inlines the data into dist/ (a path read relative to
+// this file would point outside the bundle once it is built).
+import issuers from "../data/issuers.json" with { type: "json" };
 
 /**
  * Issuer Registry for managing issuer ID assignments
@@ -70,52 +67,45 @@ class IssuerRegistry {
 	}
 
 	/**
-	 * Load issuers from JSON file
+	 * Load the issuers listed in data/issuers.json
 	 * @private
 	 */
 	_loadIssuersFromFile() {
-		try {
-			const jsonPath = join(__dirname, "../data/issuers.json");
-			const jsonData = readFileSync(jsonPath, "utf-8");
-			const data = JSON.parse(jsonData);
+		const data = issuers;
 
-			// Load Category A issuers
-			if (data.categoryA && data.categoryA.issuers) {
-				for (const [idStr, info] of Object.entries(data.categoryA.issuers)) {
-					const id = parseInt(idStr, 10);
-					this._registry.set(id, {
-						...info,
-						category: "Category A",
-						immutable: false,
-						reserved: false
-					});
+		// Load Category A issuers
+		if (data.categoryA && data.categoryA.issuers) {
+			for (const [idStr, info] of Object.entries(data.categoryA.issuers)) {
+				const id = parseInt(idStr, 10);
+				this._registry.set(id, {
+					...info,
+					category: "Category A",
+					immutable: false,
+					reserved: false
+				});
+			}
+		}
+
+		// Load Category B issuers
+		if (data.categoryB && data.categoryB.issuers) {
+			for (const [idStr, info] of Object.entries(data.categoryB.issuers)) {
+				const id = parseInt(idStr, 10);
+				this._registry.set(id, {
+					...info,
+					category: "Category B",
+					immutable: false,
+					reserved: false
+				});
+			}
+		}
+
+		// Load future RFC blocks
+		if (data.futureRFC && data.futureRFC.blocks) {
+			for (const block of data.futureRFC.blocks) {
+				if (block.startID && block.count) {
+					this.reserveFutureRFCBlock(block.startID, block.count, block.description || "Reserved block");
 				}
 			}
-
-			// Load Category B issuers
-			if (data.categoryB && data.categoryB.issuers) {
-				for (const [idStr, info] of Object.entries(data.categoryB.issuers)) {
-					const id = parseInt(idStr, 10);
-					this._registry.set(id, {
-						...info,
-						category: "Category B",
-						immutable: false,
-						reserved: false
-					});
-				}
-			}
-
-			// Load future RFC blocks
-			if (data.futureRFC && data.futureRFC.blocks) {
-				for (const block of data.futureRFC.blocks) {
-					if (block.startID && block.count) {
-						this.reserveFutureRFCBlock(block.startID, block.count, block.description || "Reserved block");
-					}
-				}
-			}
-		} catch (error) {
-			// If file doesn't exist or is invalid, continue with just reserved IDs
-			console.warn(`Could not load issuers.json: ${error.message}`);
 		}
 	}
 

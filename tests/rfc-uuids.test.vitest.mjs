@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:37-07:00 (1790980417)
+ *	@Last modified time: 2026-11-01T12:13:46-08:00 (1793564026)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -20,7 +20,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { UUID } from "../index.mjs";
+import { UUID } from "../src/index.mjs";
 import * as rfc from "../src/lib/versions/rfc/index.mjs";
 import { v1 as rawV1 } from "../src/lib/versions/rfc/v1.mjs";
 import { v3 as rawV3 } from "../src/lib/versions/rfc/v35.mjs";

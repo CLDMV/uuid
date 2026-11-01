@@ -2,21 +2,27 @@
 	"name": "@cldmv/uuid",
 	"version": "1.2.6",
 	"description": "Extended RFC 4122 and RFC 9562 UUID implementation with custom variant structures, issuer-based identification, and timestamp variants",
-	"main": "./index.cjs",
-	"module": "./index.mjs",
-	"types": "./types/index.d.mts",
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.mjs",
+	"types": "./types/src/index.d.mts",
 	"exports": {
 		".": {
-			"types": "./types/index.d.mts",
-			"import": "./index.mjs",
-			"require": "./index.cjs"
+			"uuid-dev": {
+				"types": "./types/src/index.d.mts",
+				"import": "./src/index.mjs",
+				"require": "./src/index.cjs"
+			},
+			"types": "./types/src/index.d.mts",
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.cjs"
 		},
 		"./main": {
-			"types": "./types/dist/uuid.d.mts",
 			"uuid-dev": {
-				"import": "./src/uuid.mjs"
+				"types": "./types/src/index.d.mts",
+				"import": "./src/main.mjs"
 			},
-			"import": "./dist/uuid.mjs"
+			"types": "./types/src/index.d.mts",
+			"import": "./dist/main.mjs"
 		},
 		"./rng": {
 			"uuid-dev": {
@@ -24,10 +30,10 @@
 				"import": "./src/lib/rng.mjs"
 			},
 			"browser": {
-				"types": "./types/dist/lib/rng-browser.d.mts",
+				"types": "./types/src/lib/rng-browser.d.mts",
 				"default": "./dist/lib/rng-browser.mjs"
 			},
-			"types": "./types/dist/lib/rng.d.mts",
+			"types": "./types/src/lib/rng.d.mts",
 			"import": "./dist/lib/rng.mjs"
 		},
 		"./bytes": {
@@ -36,10 +42,10 @@
 				"import": "./src/lib/bytes.mjs"
 			},
 			"browser": {
-				"types": "./types/dist/lib/bytes-browser.d.mts",
+				"types": "./types/src/lib/bytes-browser.d.mts",
 				"default": "./dist/lib/bytes-browser.mjs"
 			},
-			"types": "./types/dist/lib/bytes.d.mts",
+			"types": "./types/src/lib/bytes.d.mts",
 			"import": "./dist/lib/bytes.mjs"
 		},
 		"./hash": {
@@ -48,10 +54,10 @@
 				"import": "./src/lib/hash.mjs"
 			},
 			"browser": {
-				"types": "./types/dist/lib/hash-browser.d.mts",
+				"types": "./types/src/lib/hash-browser.d.mts",
 				"default": "./dist/lib/hash-browser.mjs"
 			},
-			"types": "./types/dist/lib/hash.d.mts",
+			"types": "./types/src/lib/hash.d.mts",
 			"import": "./dist/lib/hash.mjs"
 		},
 		"./package.json": "./package.json"
@@ -70,13 +76,13 @@
 		"node": "^20.19.0 || >=22.13.0"
 	},
 	"scripts": {
-		"build": "npm run build:dist && npm run build:types",
-		"build:ci": "npm run build",
-		"build:dist": "node -e \"const fs = require('fs'); const path = require('path'); fs.rmSync('dist', {recursive: true, force: true}); fs.mkdirSync('dist', {recursive: true}); fs.cpSync('src', 'dist', {recursive: true});\"",
-		"build:types": "node -e \"require('fs').rmSync('types', {recursive: true, force: true})\" && tsc --project .configs/tsconfig.dts.jsonc",
+		"build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsup",
+		"build:ci": "npm run lint --if-present && npm run format:check --if-present && npm run types:build && npm run build",
+		"build:types": "node -e \"require('node:fs').rmSync('types', { recursive: true, force: true })\" && tsc --project .configs/tsconfig.dts.jsonc",
+		"prepack": "npm run build",
 		"demo": "node scripts/demo-custom-uuids.mjs",
 		"test": "node tests/run-vitest.mjs && npm run test:cjs && npm run test:types",
-		"test:cjs": "node --conditions=uuid-dev --test tests/cjs/entry.test.cjs",
+		"test:cjs": "npm run build && node --conditions=uuid-dev --test tests/cjs/entry.test.cjs",
 		"test:types": "npm run build && node --test tests/types/consumer.test.mjs",
 		"test:watch": "vitest --config .configs/vitest.config.mjs",
 		"coverage": "node tests/run-vitest.mjs --coverage-quiet && npm run test:cjs && npm run test:types",
@@ -128,23 +134,24 @@
 		"access": "public"
 	},
 	"files": [
-		"index.mjs",
-		"index.cjs",
-		"README.md",
-		"LICENSE",
-		"types/dist/",
-		"types/index.d.mts",
-		"types/index.d.mts.map",
+		"dist/",
+		"!dist/**/*.map",
+		"types/",
 		"typings/",
-		"dist/"
+		"README.md",
+		"LICENSE"
 	],
-	"sideEffects": false,
+	"sideEffects": [
+		"./src/main.mjs",
+		"./dist/main.mjs"
+	],
 	"devDependencies": {
 		"@cldmv/configs": "^1.2.4",
 		"@cldmv/fix-headers": "^2.2.0",
 		"@cldmv/vitest-runner": "^1.2.0",
 		"@types/node": "^26.6.4",
 		"@vitest/coverage-v8": "^5.0.0",
+		"tsup": "^9.0.0",
 		"typescript": "^5.9.3",
 		"vitest": "^5.0.0"
 	}
