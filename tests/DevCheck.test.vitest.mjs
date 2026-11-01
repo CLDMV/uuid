@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-01T09:03:41-08:00 (1793552621)
+ *	@Last modified time: 2026-11-01T09:13:30-08:00 (1793553210)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -15,7 +15,7 @@
 
 import { test, expect, describe, beforeAll, afterAll } from "vitest";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, copyFileSync, rmSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, copyFileSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,7 +25,17 @@ import { fileURLToPath } from "node:url";
 // directory with a from-scratch env (only PATH), preventing the real CI environment
 // this suite runs in from leaking `CI`/`GITHUB_ACTIONS`/`NODE_OPTIONS` into the
 // subprocess.
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+// The repo root is the nearest directory above this test that holds devcheck.mjs, so the file
+// works unchanged wherever a repo keeps its tests.
+function findRepoRoot(dir) {
+	while (!existsSync(path.join(dir, "devcheck.mjs"))) {
+		const parent = path.dirname(dir);
+		if (parent === dir) throw new Error("devcheck.mjs not found above the devcheck test");
+		dir = parent;
+	}
+	return dir;
+}
+const repoRoot = findRepoRoot(path.dirname(fileURLToPath(import.meta.url)));
 const devcheckSrc = path.join(repoRoot, "devcheck.mjs");
 
 // The suite is the same in every repo: the package name and its dev condition come from the
