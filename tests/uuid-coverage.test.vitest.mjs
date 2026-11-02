@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:38-07:00 (1790980418)
+ *	@Last modified time: 2026-11-01T09:26:23-08:00 (1793553983)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -139,27 +139,5 @@ describe("UUID branch and alias coverage", () => {
 		expect(UUID.version("not-a-uuid")).toBe(null);
 		expect(UUID.version({ nope: true })).toBe(null);
 		expect(UUID.detectVariant(instance)).toBe("IA");
-	});
-
-	it("should execute devcheck branches for CI and valid dev environment", async () => {
-		const originalCI = process.env.CI;
-		const originalNodeEnv = process.env.NODE_ENV;
-		const originalNodeOptions = process.env.NODE_OPTIONS;
-
-		try {
-			process.env.CI = "1";
-			process.env.NODE_ENV = "production";
-			process.env.NODE_OPTIONS = "";
-			await import("../devcheck.mjs?ci-case");
-
-			process.env.CI = "";
-			process.env.NODE_ENV = "development";
-			process.env.NODE_OPTIONS = "";
-			await import("../devcheck.mjs?dev-case");
-		} finally {
-			process.env.CI = originalCI;
-			process.env.NODE_ENV = originalNodeEnv;
-			process.env.NODE_OPTIONS = originalNodeOptions;
-		}
 	});
 });

@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:21-07:00 (1790980401)
+ *	@Last modified time: 2026-11-01T12:13:39-08:00 (1793564019)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -26,25 +26,10 @@
 		"moduleResolution": "Bundler",
 		"target": "ES2022",
 		"skipLibCheck": true,
-		"stripInternal": true // hides /** @internal */ if you use it
+		"stripInternal": true, // hides /** @internal */ if you use it
+		"resolveJsonModule": true // src/lib/issuer-registry.mjs imports data/issuers.json
 	},
-	"include": ["../index.mjs", "./index.mjs", "../src/**/*.mjs", "../src/*.mjs", "../**/*.js", "../**/*.mjs", "../**/*.d.ts"],
-	"exclude": [
-		"../api_test",
-		"../tests",
-		"../test",
-		"../coverage",
-		"../tools",
-		"../types",
-		"../.config",
-		"../.configs",
-		"../.data",
-		// "../dist",
-		"../build",
-		"../docs",
-		"../old",
-		"../node_modules",
-		"../**/* copy.mjs", // exactly "… copy.mjs"
-		"../**/* copy*.mjs" // matches "… copy 3.mjs", "… copy whatever.mjs"
-	]
+	// Declarations come from src/ only: dist/ is a minified bundle and the package's types
+	// point at types/src/.
+	"include": ["../src/**/*.mjs"]
 }

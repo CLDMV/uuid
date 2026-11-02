@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-03T17:44:07-07:00 (1791074647)
+ *	@Last modified time: 2026-11-01T12:13:46-08:00 (1793564026)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -22,8 +22,8 @@
  * condition (the import silently becomes `any`) as well as declarations that do not
  * compile or describe the API wrongly.
  *
- * Needs a build first (`npm run build`): the published declarations live in types/dist/.
- * `npm run test:types` builds and then runs this file.
+ * Needs a build first (`npm run build`): the tarball ships dist/ next to the committed
+ * declarations in types/src/. `npm run test:types` builds and then runs this file.
  */
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -78,7 +78,7 @@ function compile(name, files, types, extra = {}) {
 }
 
 before(() => {
-	for (const built of ["dist/uuid.mjs", "types/dist/uuid.d.mts"]) {
+	for (const built of ["dist/index.mjs", "types/src/index.d.mts"]) {
 		assert.ok(existsSync(path.join(repoRoot, built)), `${built} is missing; run \`npm run build\` first (or use \`npm run test:types\`)`);
 	}
 
@@ -104,13 +104,10 @@ before(() => {
 	writeFileSync(
 		path.join(consumerDir, "main.mts"),
 		`import UUIDDefault, { UUID, uuid, ISSUER_CATEGORIES } from "@cldmv/uuid";
-import { UUID as MainUUID, uuid as mainUuid, ISSUER_CATEGORIES as MAIN_CATEGORIES } from "@cldmv/uuid/main";
 
-// The default export, the named exports and the ./main subpath are all the same class.
+// The default export and the named exports are all the same class.
 const same: typeof UUID = UUIDDefault;
 const sameLower: typeof UUID = uuid;
-const sameMain: typeof UUID = MainUUID;
-const sameMainLower: typeof UUID = mainUuid;
 
 // RFC generators: options are optional, and passing a buffer returns the buffer.
 const v1: string = UUID.v1();
@@ -135,7 +132,7 @@ const ta: UUID = UUID.TA();
 const tb: UUID = UUID.TB(new Date());
 const ia: UUID = UUID.IA(ISSUER_CATEGORIES.SPEC_ORIGINATOR);
 const viaTimestamp: UUID = UUID.createTimestampVariant(undefined, 2);
-const viaIssuer: UUID = UUID.createIssuerVariant(MAIN_CATEGORIES.UNASSIGNED, 1, new Uint8Array(16));
+const viaIssuer: UUID = UUID.createIssuerVariant(ISSUER_CATEGORIES.UNASSIGNED, 1, new Uint8Array(16));
 const instance = new UUID();
 const fromString = new UUID(ta.toString());
 const ts: number | null = tb.getTimestamp();
@@ -152,10 +149,25 @@ const info = await UUID.getIssuerInfo(1);
 const report = await UUID.validate(ta.toBuffer());
 
 export {
-	same, sameLower, sameMain, sameMainLower, v1, v4, v4Random, v4Buf, v6, v7, v8, v1Node, v3, v5, nil, parsed,
+	same, sameLower, v1, v4, v4Random, v4Buf, v6, v7, v8, v1Node, v3, v5, nil, parsed,
 	text, fromArray, valid, rfcVersion, ta, tb, ia, viaTimestamp, viaIssuer, instance, fromString, ts, issuerID,
 	bytes, asString, json, category, available, info, report
 };
+`
+	);
+
+	// The deprecated ./main alias keeps its types: the same exports as the package root.
+	writeFileSync(
+		path.join(consumerDir, "alias.mts"),
+		`import MainDefault, { UUID as MainUUID, uuid as mainUuid, ISSUER_CATEGORIES as MAIN_CATEGORIES } from "@cldmv/uuid/main";
+import { UUID } from "@cldmv/uuid";
+
+const sameDefault: typeof UUID = MainDefault;
+const sameMain: typeof UUID = MainUUID;
+const sameMainLower: typeof UUID = mainUuid;
+const category: number = MAIN_CATEGORIES.UNASSIGNED;
+
+export { sameDefault, sameMain, sameMainLower, category };
 `
 	);
 
@@ -257,14 +269,14 @@ after(() => {
 const bundler = { module: "esnext", moduleResolution: "bundler" };
 
 test("the main entry and ./main type-check under nodenext with @types/node", () => {
-	const { status, output } = compile("main", ["main.mts"], ["node"]);
+	const { status, output } = compile("main", ["main.mts", "alias.mts"], ["node"]);
 	assert.equal(status, 0, output);
 });
 
 test("the main entry and ./main type-check under bundler resolution without @types/node", () => {
 	// types: [] keeps @types/node out, so this also shows the default (non-Node) declarations
 	// do not depend on Node-only globals such as Buffer (the package also runs in browsers).
-	const { status, output } = compile("main-bundler", ["main.mts"], [], bundler);
+	const { status, output } = compile("main-bundler", ["main.mts", "alias.mts"], [], bundler);
 	assert.equal(status, 0, output);
 });
 

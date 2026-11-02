@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:37-07:00 (1790980417)
+ *	@Last modified time: 2026-11-01T12:13:45-08:00 (1793564025)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -160,61 +160,39 @@ describe("IssuerRegistry import, export, and stats", () => {
 		expect(stats.available.futureRFC).toBeGreaterThanOrEqual(0);
 	});
 
-	it("should continue initialization when issuer file read fails", async () => {
-		vi.resetModules();
-		vi.doMock("fs", () => ({
-			readFileSync: () => {
-				throw new Error("simulated file read failure");
-			}
-		}));
-
-		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-		const { IssuerRegistry: MockedIssuerRegistry } = await import("../src/lib/issuer-registry.mjs");
-		const registry = new MockedIssuerRegistry();
-
-		expect(registry.getIssuer(ISSUER_CATEGORIES.UNASSIGNED)?.name).toBe("Unassigned/Open");
-		expect(warnSpy).toHaveBeenCalled();
-
-		warnSpy.mockRestore();
-		vi.doUnmock("fs");
-		vi.resetModules();
-	});
-
 	it("should load and reserve future blocks from issuer file data", async () => {
 		vi.resetModules();
 		ISSUER_CATEGORIES.FUTURE_RFC_START = 512;
 		ISSUER_CATEGORIES.FUTURE_RFC_END = 1023;
 
-		vi.doMock("fs", () => ({
-			readFileSync: () =>
-				JSON.stringify({
-					categoryA: { issuers: {} },
-					categoryB: { issuers: {} },
-					futureRFC: {
-						blocks: [{ startID: 512, count: 16, description: "preloaded block" }]
-					}
-				})
+		vi.doMock("../src/data/issuers.json", () => ({
+			default: {
+				categoryA: { issuers: {} },
+				categoryB: { issuers: {} },
+				futureRFC: {
+					blocks: [{ startID: 512, count: 16, description: "preloaded block" }]
+				}
+			}
 		}));
 
 		const { IssuerRegistry: MockedIssuerRegistry } = await import("../src/lib/issuer-registry.mjs");
 		const registry = new MockedIssuerRegistry();
 		expect(registry.getIssuer(512)?.category).toBe("Future RFC");
 
-		vi.doUnmock("fs");
+		vi.doUnmock("../src/data/issuers.json");
 		vi.resetModules();
 	});
 
 	it("should handle issuer data without categoryB and futureRFC blocks", async () => {
 		vi.resetModules();
-		vi.doMock("fs", () => ({
-			readFileSync: () =>
-				JSON.stringify({
-					categoryA: {
-						issuers: {
-							"20": { name: "Only A", description: "single category" }
-						}
+		vi.doMock("../src/data/issuers.json", () => ({
+			default: {
+				categoryA: {
+					issuers: {
+						"20": { name: "Only A", description: "single category" }
 					}
-				})
+				}
+			}
 		}));
 
 		const { IssuerRegistry: MockedIssuerRegistry } = await import("../src/lib/issuer-registry.mjs");
@@ -222,7 +200,7 @@ describe("IssuerRegistry import, export, and stats", () => {
 		expect(registry.getIssuer(20)?.category).toBe("Category A");
 		expect(registry.getIssuer(256)).toBe(null);
 
-		vi.doUnmock("fs");
+		vi.doUnmock("../src/data/issuers.json");
 		vi.resetModules();
 	});
 
@@ -231,13 +209,12 @@ describe("IssuerRegistry import, export, and stats", () => {
 		ISSUER_CATEGORIES.FUTURE_RFC_START = 512;
 		ISSUER_CATEGORIES.FUTURE_RFC_END = 1023;
 
-		vi.doMock("fs", () => ({
-			readFileSync: () =>
-				JSON.stringify({
-					futureRFC: {
-						blocks: [{ startID: 640, count: 16 }, { startID: 700 }]
-					}
-				})
+		vi.doMock("../src/data/issuers.json", () => ({
+			default: {
+				futureRFC: {
+					blocks: [{ startID: 640, count: 16 }, { startID: 700 }]
+				}
+			}
 		}));
 
 		const { IssuerRegistry: MockedIssuerRegistry } = await import("../src/lib/issuer-registry.mjs");
@@ -245,7 +222,7 @@ describe("IssuerRegistry import, export, and stats", () => {
 		expect(registry.getIssuer(640)?.description).toBe("Reserved block");
 		expect(registry.getIssuer(700)).toBe(null);
 
-		vi.doUnmock("fs");
+		vi.doUnmock("../src/data/issuers.json");
 		vi.resetModules();
 	});
 });

@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:22-07:00 (1790980402)
+ *	@Last modified time: 2026-11-01T12:13:39-08:00 (1793564019)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -40,11 +40,9 @@ export default {
 		coverage: {
 			enabled: true,
 			provider: "v8",
-			// Real source only. index.mjs and devcheck.mjs ARE exercised (rfc-uuids.test.vitest.mjs
-			// imports ../index.mjs; uuid-coverage.test.vitest.mjs drives devcheck.mjs's CI/dev-env
-			// branches directly), so they're measured. index.cjs (the CJS entry wrapper) is
-			// deliberately omitted — no require()-based test currently exercises it.
-			include: ["src/**", "index.mjs", "devcheck.mjs"],
+			// Real source only. src/index.cjs (the CJS entry wrapper) is exercised by
+			// tests/cjs/entry.test.cjs under node --test, which Vitest doesn't measure.
+			include: ["src/**/*.mjs"],
 			exclude: [
 				"src/data/**", // static JSON data, no executable logic
 				"scripts/**",
