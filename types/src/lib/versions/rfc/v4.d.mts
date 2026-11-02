@@ -7,8 +7,8 @@
  * @returns {string|Uint8Array} UUID string or buffer
  */
 export function v4(options?: {
-    random?: Uint8Array;
-    buf?: Uint8Array;
-    offset?: number;
+    random?: Uint8Array<ArrayBufferLike> | undefined;
+    buf?: Uint8Array<ArrayBufferLike> | undefined;
+    offset?: number | undefined;
 }): string | Uint8Array;
 //# sourceMappingURL=v4.d.mts.map

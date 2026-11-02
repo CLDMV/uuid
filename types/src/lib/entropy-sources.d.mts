@@ -26,7 +26,7 @@ export class EntropySource {
      * @param {Buffer} entropy - Entropy to validate
      * @returns {Object} Validation results
      */
-    static validateEntropyQuality(entropy: Buffer): any;
+    static validateEntropyQuality(entropy: Buffer): Object;
     /**
      * Generate high-quality entropy with validation
      * @param {number} byteCount - Number of bytes to generate
@@ -60,6 +60,6 @@ export class EntropySource {
      * @param {number} sampleCount - Number of samples to analyze
      * @returns {Object} Analysis results
      */
-    static analyzeEntropySource(entropyGenerator: Function, sampleCount?: number): any;
+    static analyzeEntropySource(entropyGenerator: Function, sampleCount?: number): Object;
 }
 //# sourceMappingURL=entropy-sources.d.mts.map

@@ -112,6 +112,6 @@ export class BitUtils {
      * @param {Object} fieldDefinitions - Object mapping field names to {start, length} definitions
      * @returns {Object} Object with field names as keys and their values
      */
-    static getFieldValues(buffer: Uint8Array, fieldDefinitions: any): any;
+    static getFieldValues(buffer: Uint8Array, fieldDefinitions: Object): Object;
 }
 //# sourceMappingURL=bit-utils.d.mts.map

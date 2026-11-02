@@ -11,11 +11,11 @@ export type RFCBufferOptions = {
     /**
      * - Buffer to write the UUID into; when given, the generator returns it instead of a string
      */
-    buf?: Uint8Array;
+    buf?: Uint8Array<ArrayBufferLike> | undefined;
     /**
      * - Offset in `buf` to start writing at (default 0)
      */
-    offset?: number;
+    offset?: number | undefined;
 };
 /**
  * Options for {@link UUID.v1} and {@link UUID.v6}. `node` is the 6-byte node id (MAC address),
@@ -181,9 +181,14 @@ export class UUID {
      * @param {TimeOptions & { buf?: undefined }} [options] - Optional parameters
      * @returns {string} UUID string
      */
-    static v1(options?: TimeOptions & {
+    static v1(options?: (RFCBufferOptions & {
+        node?: ArrayLike<number>;
+        clockseq?: number;
+        msecs?: number;
+        nsecs?: number;
+    } & {
         buf?: undefined;
-    }): string;
+    }) | undefined): string;
     /**
      * Generate a version 1 (timestamp) UUID, written into `options.buf`
      * @template {Uint8Array} T
@@ -207,9 +212,11 @@ export class UUID {
      * @param {V4Options & { buf?: undefined }} [options] - Optional parameters
      * @returns {string} UUID string
      */
-    static v4(options?: V4Options & {
+    static v4(options?: (RFCBufferOptions & {
+        random?: Uint8Array;
+    } & {
         buf?: undefined;
-    }): string;
+    }) | undefined): string;
     /**
      * Generate a version 4 (random) UUID, written into `options.buf`
      * @template {Uint8Array} T
@@ -233,9 +240,14 @@ export class UUID {
      * @param {TimeOptions & { buf?: undefined }} [options] - Optional parameters
      * @returns {string} UUID string
      */
-    static v6(options?: TimeOptions & {
+    static v6(options?: (RFCBufferOptions & {
+        node?: ArrayLike<number>;
+        clockseq?: number;
+        msecs?: number;
+        nsecs?: number;
+    } & {
         buf?: undefined;
-    }): string;
+    }) | undefined): string;
     /**
      * Generate a version 6 (timestamp, reordered) UUID, written into `options.buf`
      * @template {Uint8Array} T
@@ -252,9 +264,11 @@ export class UUID {
      * @param {V7Options & { buf?: undefined }} [options] - Optional parameters
      * @returns {string} UUID string
      */
-    static v7(options?: V7Options & {
+    static v7(options?: (RFCBufferOptions & {
+        msecs?: number;
+    } & {
         buf?: undefined;
-    }): string;
+    }) | undefined): string;
     /**
      * Generate a version 7 (Unix Epoch) UUID, written into `options.buf`
      * @template {Uint8Array} T
@@ -271,9 +285,11 @@ export class UUID {
      * @param {V8Options & { buf?: undefined }} [options] - Optional parameters
      * @returns {string} UUID string
      */
-    static v8(options?: V8Options & {
+    static v8(options?: (RFCBufferOptions & {
+        data?: Uint8Array;
+    } & {
         buf?: undefined;
-    }): string;
+    }) | undefined): string;
     /**
      * Generate a version 8 (custom/experimental) UUID, written into `options.buf`
      * @template {Uint8Array} T

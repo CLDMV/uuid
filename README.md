@@ -14,18 +14,17 @@ The custom variants (`TA`, `TB`, `IA`) live in the variant `111` namespace, so t
 
 ## ✨ What's New
 
-### Latest: v1.3.0 (November 2026)
+### Latest: v1.3.1 (November 2026)
 
-- **Built from `src/` with tsup**: the package now ships a bundled `dist/` with `dist/index.mjs` and a thin `dist/index.cjs` wrapper, plus `dist/lib/` for the `./rng`, `./bytes` and `./hash` subpaths. The `UUID` API and the import paths are unchanged. `@cldmv/uuid/main` is now a deprecated alias of the root that prints a one-time `DeprecationWarning` (code `CLDMV_UUID_MAIN`); import `@cldmv/uuid` instead ([#78](https://github.com/CLDMV/uuid/issues/78), [#80](https://github.com/CLDMV/uuid/pull/80)).
-- **Node.js 22.22.0 or later**: `engines.node` goes from `>=16.12.0` to `>=22.22.0` for both `import` and `require()`. This is a real requirement change; stay on v1.2.6 if you can't upgrade Node.js yet ([#79](https://github.com/CLDMV/uuid/pull/79), [#80](https://github.com/CLDMV/uuid/pull/80)).
-- [View full v1.3.0 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.0.md)
+- **`engines.node` is the runtime floor again**: `engines.node` is back to `>=16.12.0`, the version the package actually needs for `import`, instead of v1.3.0's `>=22.22.0`, so installs on older Node.js no longer get an engine warning. The 22.22.0 development toolchain floor moves to `devEngines`, which only applies to work on this repository. `require()` needs Node.js ^20.19.0 or >=22.13.0, and its error message now says so ([#85](https://github.com/CLDMV/uuid/pull/85)).
+- [View full v1.3.1 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.1.md)
 
 ### Recent Releases
 
+- **v1.3.0** (November 2026): built from `src/` with tsup into `dist/`, `@cldmv/uuid/main` becomes a deprecated alias of the root, and `engines.node` went to `>=22.22.0` ([#78](https://github.com/CLDMV/uuid/issues/78), [#80](https://github.com/CLDMV/uuid/pull/80)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.0.md))
 - **v1.2.6** (October 2026): test toolchain update, `vitest` 5.0.3 and `@cldmv/vitest-runner` 1.5.3, dev-only, no runtime change ([#61](https://github.com/CLDMV/uuid/pull/61), [#64](https://github.com/CLDMV/uuid/pull/64)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.6.md))
 - **v1.2.5** (October 2026): `require()` works, real TypeScript types, and the Apache-2.0 `LICENSE` file ([#50](https://github.com/CLDMV/uuid/pull/50), [#54](https://github.com/CLDMV/uuid/pull/54), [#55](https://github.com/CLDMV/uuid/pull/55)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.5.md))
 - **v1.2.4** (October 2026): dev tooling only, moves header maintenance to the shared CLDMV fix-headers config and stops the in-repo PR mirror check from reporting as skipped, no runtime change ([#46](https://github.com/CLDMV/uuid/pull/46), [#47](https://github.com/CLDMV/uuid/pull/47)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.4.md))
-- **v1.2.3** (October 2026): release tooling only, syncs the workflows with the `CLDMV/.github` v4.29.2 templates and adds a bundle-size check, no runtime change ([#37](https://github.com/CLDMV/uuid/pull/37), [#38](https://github.com/CLDMV/uuid/pull/38)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.3.md))
 
 📚 **For complete version history and detailed release notes, see the [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/) folder.**
 
@@ -63,8 +62,9 @@ The specification is designed for formal RFC submission and includes comprehensi
 
 ### Requirements
 
-- **Node.js**: >=22.22.0 (the package's `engines.node` floor), for both `import` and `require()`. Any modern browser bundler works too, through the `browser` export condition.
-- **CommonJS (`require()`)**: `dist/index.cjs` is a few lines that load the ESM build through Node's synchronous `require(esm)`, so `require()` and `import` return the same objects. Node.js versions without `require(esm)` get a clear `ERR_REQUIRE_ESM` error; on those, load the package with `import()` instead.
+- **Node.js**: >=16.12.0 for `import` (the package's `engines.node` floor). Any modern browser bundler works too, through the `browser` export condition.
+- **CommonJS (`require()`)**: needs Node.js ^20.19.0 or >=22.13.0. `dist/index.cjs` is a few lines that load the ESM build through Node's synchronous `require(esm)`, so `require()` and `import` return the same objects. Node.js versions without `require(esm)` get a clear `ERR_REQUIRE_ESM` error; on those, load the package with `import()` instead.
+- **Development**: developing this package needs Node.js 22.22.0 or later (`devEngines`).
 - **`@cldmv/uuid/main`** is a deprecated alias of the package root. It exports the same objects and prints a one-time `DeprecationWarning` (code `CLDMV_UUID_MAIN`); import `@cldmv/uuid` instead. It will be removed in the next major version.
 
 ### Install
@@ -148,7 +148,7 @@ if (UUID.validateRFC(v4)) {
 }
 ```
 
-CommonJS works the same way on Node.js >=22.22.0:
+CommonJS works the same way on Node.js ^20.19.0 or >=22.13.0:
 
 ```javascript
 const UUID = require("@cldmv/uuid"); // also UUID.UUID, UUID.uuid, UUID.ISSUER_CATEGORIES
