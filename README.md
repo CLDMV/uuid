@@ -17,7 +17,7 @@ The custom variants (`TA`, `TB`, `IA`) live in the variant `111` namespace, so t
 ### Latest: v1.3.0 (November 2026)
 
 - **Built from `src/` with tsup**: the package now ships a bundled `dist/` with `dist/index.mjs` and a thin `dist/index.cjs` wrapper, plus `dist/lib/` for the `./rng`, `./bytes` and `./hash` subpaths. The `UUID` API and the import paths are unchanged. `@cldmv/uuid/main` is now a deprecated alias of the root that prints a one-time `DeprecationWarning` (code `CLDMV_UUID_MAIN`); import `@cldmv/uuid` instead ([#78](https://github.com/CLDMV/uuid/issues/78), [#80](https://github.com/CLDMV/uuid/pull/80)).
-- **Node.js 22.22.0 or later**: `engines.node` goes from `>=16.12.0` to `>=22.22.0` for both `import` and `require()`. This is a real requirement change; stay on v1.2.6 if you can't upgrade Node.js yet ([#79](https://github.com/CLDMV/uuid/pull/79), [#80](https://github.com/CLDMV/uuid/pull/80)).
+- **Node.js 22.22.0 or later**: `engines.node` goes from `>=16.12.0` to `>=22.22.0` for both `import` and `require()`. Stay on v1.2.6 if you can't upgrade Node.js yet ([#79](https://github.com/CLDMV/uuid/pull/79), [#80](https://github.com/CLDMV/uuid/pull/80)).
 - [View full v1.3.0 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.0.md)
 
 ### Recent Releases
