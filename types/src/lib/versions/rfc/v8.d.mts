@@ -15,8 +15,8 @@
  * v8({ data: customData });
  */
 export function v8(options?: {
-    data?: Uint8Array;
-    buf?: Uint8Array;
-    offset?: number;
+    data?: Uint8Array<ArrayBufferLike> | undefined;
+    buf?: Uint8Array<ArrayBufferLike> | undefined;
+    offset?: number | undefined;
 }): string | Uint8Array;
 //# sourceMappingURL=v8.d.mts.map

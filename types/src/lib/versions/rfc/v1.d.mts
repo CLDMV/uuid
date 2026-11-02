@@ -10,11 +10,11 @@
  * @returns {string|Uint8Array} UUID string or buffer
  */
 export function v1(options?: {
-    node?: ArrayLike<number>;
-    clockseq?: number;
-    msecs?: number;
-    nsecs?: number;
-    buf?: Uint8Array;
-    offset?: number;
+    node?: ArrayLike<number> | undefined;
+    clockseq?: number | undefined;
+    msecs?: number | undefined;
+    nsecs?: number | undefined;
+    buf?: Uint8Array<ArrayBufferLike> | undefined;
+    offset?: number | undefined;
 }): string | Uint8Array;
 //# sourceMappingURL=v1.d.mts.map

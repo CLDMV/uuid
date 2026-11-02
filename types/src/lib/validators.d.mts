@@ -7,7 +7,7 @@ export class UUIDValidator {
      * @param {Uint8Array} uuidBuffer - 16-byte UUID buffer
      * @returns {Object} Validation results
      */
-    static validateCompleteUUID(uuidBuffer: Uint8Array): any;
+    static validateCompleteUUID(uuidBuffer: Uint8Array): Object;
     /**
      * Validate UUID specific fields
      * @param {Uint8Array} uuidBuffer - UUID buffer
@@ -34,13 +34,13 @@ export class UUIDValidator {
      * @param {Uint8Array} uuidBuffer - UUID buffer
      * @returns {Object} Bit layout validation results
      */
-    static validateBitLayout(uuidBuffer: Uint8Array): any;
+    static validateBitLayout(uuidBuffer: Uint8Array): Object;
     /**
      * Validate entropy distribution in non-immutable fields
      * @param {Uint8Array} uuidBuffer - UUID buffer
      * @returns {Object} Entropy validation results
      */
-    static validateEntropy(uuidBuffer: Uint8Array): any;
+    static validateEntropy(uuidBuffer: Uint8Array): Object;
     /**
      * Get issuer category name from issuer ID
      * @param {number} issuerID - Issuer ID
@@ -52,12 +52,12 @@ export class UUIDValidator {
      * @param {number} issuerID - Issuer ID to validate
      * @returns {Object} Validation result
      */
-    static validateIssuerIDMutability(issuerID: number): any;
+    static validateIssuerIDMutability(issuerID: number): Object;
     /**
      * Generate a comprehensive validation report
      * @param {Uint8Array} uuidBuffer - UUID buffer to validate
      * @returns {Object} Comprehensive validation report
      */
-    static generateValidationReport(uuidBuffer: Uint8Array): any;
+    static generateValidationReport(uuidBuffer: Uint8Array): Object;
 }
 //# sourceMappingURL=validators.d.mts.map
