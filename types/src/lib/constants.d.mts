@@ -1,4 +1,16 @@
 /**
+ * Whether a timestamp version stores seconds (versions 1 and 3) rather than milliseconds
+ * @param {number} version - Timestamp variant version
+ * @returns {boolean} True for seconds precision
+ */
+export function isSecondsVersion(version: number): boolean;
+/**
+ * Whether a timestamp version uses the ordered (most significant bit first) layout (versions 3 and 4)
+ * @param {number} version - Timestamp variant version
+ * @returns {boolean} True for the ordered layout
+ */
+export function isOrderedVersion(version: number): boolean;
+/**
  *
  *	@Project: @cldmv/uuid
  *	@Filename: /src/lib/constants.mjs
@@ -58,6 +70,16 @@ export const VERSION_START_BIT: 75;
  * @constant {number}
  */
 export const VERSION_BIT_COUNT: 4;
+/**
+ * Timestamp versions that store seconds: 1 (legacy layout) and 3 (ordered layout). Every other timestamp version stores milliseconds.
+ * @constant {number[]}
+ */
+export const TIMESTAMP_SECONDS_VERSIONS: number[];
+/**
+ * Timestamp versions that lay the magnitude out most significant bit first in segment A: 3 (seconds) and 4 (milliseconds). Every other version, including 1 and 2, keeps the legacy low-word-first layout so ids minted before the ordered layout decode unchanged.
+ * @constant {number[]}
+ */
+export const TIMESTAMP_ORDERED_VERSIONS: number[];
 /**
  * Issuer ID field start bit position (bits 79-88 per spec)
  * @constant {number}

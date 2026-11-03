@@ -84,12 +84,12 @@ The primary focus of this library is the new custom UUID specification designed 
 ```javascript
 import { UUID } from "@cldmv/uuid";
 
-// TA: Timestamp Variant v1 (seconds precision, subvariant 00)
+// TA: Timestamp Variant (seconds precision, subvariant 00, mints version 3)
 const taUUID = UUID.TA(); // Current time in seconds
 const taWithTime = UUID.TA(Math.floor(Date.now() / 1000)); // Explicit timestamp
 const taNegative = UUID.TA(-60); // 60 seconds before Unix epoch
 
-// TB: Timestamp Variant v2 (milliseconds precision, subvariant 00)
+// TB: Timestamp Variant (milliseconds precision, subvariant 00, mints version 4)
 const tbUUID = UUID.TB(); // Current time in milliseconds
 const tbWithTime = UUID.TB(Date.now()); // Explicit timestamp
 const tbNegative = UUID.TB(-315619200000); // January 1, 1960
@@ -106,7 +106,7 @@ console.log(info);
 // {
 //   variant: 7,          // bits 64-66: 111 (custom namespace)
 //   subvariant: 0,       // bits 67-68: 00 (Timestamp Variant)
-//   version: 1,          // bits 75-78: 0001 (v1 = seconds)
+//   version: 3,          // bits 75-78: 0011 (v3 = seconds, ordered layout)
 //   timestamp: 1766203054, // signed 70-bit timestamp
 //   isCustomUUID: true,
 //   isTimestampVariant: true,
@@ -197,9 +197,9 @@ The core API for the RFC-ready custom UUID specification.
 
 ##### `UUID.TA([timestamp], [entropy])`
 
-**Timestamp Variant v1** - Seconds precision (Subvariant 00)
+**Timestamp Variant v3** - Seconds precision (Subvariant 00)
 
-Creates a UUID with a signed 70-bit timestamp in **seconds** from Unix epoch. Supports negative timestamps for dates before January 1, 1970.
+Creates a UUID with a signed 70-bit timestamp in **seconds** from Unix epoch. Supports negative timestamps for dates before January 1, 1970. `TA()` mints **version 3**, the ordered layout, so ids sort by byte order. Version 1 is the legacy low-word-first layout written by 1.3.1 and earlier; it is still decoded (see [Migrating stored ids to versions 3 and 4](#migrating-stored-ids-to-versions-3-and-4)).
 
 **Parameters:**
 
@@ -211,11 +211,11 @@ Creates a UUID with a signed 70-bit timestamp in **seconds** from Unix epoch. Su
 **Bit Layout:**
 
 - Bits 0: Sign bit (0=negative, 1=positive)
-- Bits 1-63: Lower 63 bits of timestamp magnitude
+- Bits 1-63: Lower 63 bits of timestamp magnitude, most significant bit first (ordered layout: magnitude bits 62..32 at bits 1-31, bits 31..0 at bits 32-63)
 - Bits 64-66: Variant = `111` (custom namespace)
 - Bits 67-68: Subvariant = `00` (Timestamp Variant)
 - Bits 69-74: Timestamp continuation (upper 6 bits)
-- Bits 75-78: Version = `0001` (v1 = seconds)
+- Bits 75-78: Version = `0011` (v3 = seconds, ordered layout)
 - Bits 79-127: Entropy (49 bits)
 
 ```javascript
@@ -230,9 +230,9 @@ const date = new Date(timestamp * 1000); // Convert to Date
 
 ##### `UUID.TB([timestamp], [entropy])`
 
-**Timestamp Variant v2** - Milliseconds precision (Subvariant 00)
+**Timestamp Variant v4** - Milliseconds precision (Subvariant 00)
 
-Creates a UUID with a signed 70-bit timestamp in **milliseconds** from Unix epoch. Supports negative timestamps for dates before January 1, 1970.
+Creates a UUID with a signed 70-bit timestamp in **milliseconds** from Unix epoch. Supports negative timestamps for dates before January 1, 1970. `TB()` mints **version 4**, the ordered layout, so ids sort by byte order. Version 2 is the legacy low-word-first layout written by 1.3.1 and earlier; it is still decoded (see [Migrating stored ids to versions 3 and 4](#migrating-stored-ids-to-versions-3-and-4)).
 
 **Parameters:**
 
@@ -244,11 +244,11 @@ Creates a UUID with a signed 70-bit timestamp in **milliseconds** from Unix epoc
 **Bit Layout:**
 
 - Bits 0: Sign bit (0=negative, 1=positive)
-- Bits 1-63: Lower 63 bits of timestamp magnitude
+- Bits 1-63: Lower 63 bits of timestamp magnitude, most significant bit first (ordered layout: magnitude bits 62..32 at bits 1-31, bits 31..0 at bits 32-63)
 - Bits 64-66: Variant = `111` (custom namespace)
 - Bits 67-68: Subvariant = `00` (Timestamp Variant)
 - Bits 69-74: Timestamp continuation (upper 6 bits)
-- Bits 75-78: Version = `0010` (v2 = milliseconds)
+- Bits 75-78: Version = `0100` (v4 = milliseconds, ordered layout)
 - Bits 79-127: Entropy (49 bits)
 
 ```javascript
@@ -306,17 +306,17 @@ The custom UUID methods support multiple naming styles for developer convenience
 
 ```javascript
 // Ultra-short (recommended)
-UUID.TA(); // Timestamp v1
-UUID.TB(); // Timestamp v2
+UUID.TA(); // Timestamp v3 (seconds)
+UUID.TB(); // Timestamp v4 (milliseconds)
 UUID.IA(404); // Issuer v1
 
 // Short form with explicit version
-UUID.timestamp(Math.floor(Date.now() / 1000), 1); // TA equivalent
-UUID.timestamp(Date.now(), 2); // TB equivalent
+UUID.timestamp(Math.floor(Date.now() / 1000), 3); // TA equivalent
+UUID.timestamp(Date.now(), 4); // TB equivalent
 UUID.issuer(404, 1); // IA equivalent
 
 // Full method names
-UUID.createTimestampVariant(Date.now(), 2);
+UUID.createTimestampVariant(Date.now(), 4);
 UUID.createIssuerVariant(404, 1);
 ```
 
@@ -424,8 +424,8 @@ Get version value (bits 75-78).
 
 ```javascript
 const version = uuid.getVersion();
-// => 1 for TA or IA
-// => 2 for TB
+// => 3 for TA (1 for a legacy TA id), 1 for IA
+// => 4 for TB (2 for a legacy TB id)
 ```
 
 ##### `uuid.getTimestamp()`
@@ -487,6 +487,16 @@ const ia = UUID.IA(404);
 const isTimestamp2 = ia.isTimestampVariant(); // => false
 ```
 
+##### `uuid.isLegacyTimestampLayout()`
+
+True for a Timestamp Variant in the legacy low-word-first layout (versions 1 and 2, minted by 1.3.1 and earlier). Use it to select stored ids that [`UUID.migrate()`](#migrating-stored-ids-to-versions-3-and-4) should rewrite.
+
+```javascript
+new UUID("e7f2b400-0000-018b-e005-c289f23865d3").isLegacyTimestampLayout(); // => true (version 2)
+UUID.TB().isLegacyTimestampLayout(); // => false (version 4)
+UUID.IA(404).isLegacyTimestampLayout(); // => false
+```
+
 ##### `uuid.isIssuerVariant()`
 
 Check if UUID is an Issuer Variant (subvariant 01).
@@ -519,6 +529,10 @@ v4.getVariantIdentifier(); // => 4
 const v7 = UUID.v7();
 v7.getVariantIdentifier(); // => 7
 ```
+
+##### `UUID.migrate(input)`
+
+Rewrites a legacy timestamp id into the ordered layout and returns a new `UUID`. `input` is a `UUID`, a UUID string or a 16-byte buffer. See [Migrating stored ids to versions 3 and 4](#migrating-stored-ids-to-versions-3-and-4).
 
 #### Static Detection Methods
 
@@ -695,11 +709,11 @@ Bit Layout (128 bits total):
 
 Timestamp Variant (Subvariant 00):
 - Bits 0: Sign bit (0=negative, 1=positive)
-- Bits 1-63: Timestamp magnitude (lower 63 bits)
+- Bits 1-63: Timestamp magnitude (lower 63 bits). Versions 3 and 4: most significant bit first. Versions 1 and 2: low 32 bits at bits 1-32, magnitude bits 62..32 at bits 33-63
 - Bits 64-66: Variant = 111
 - Bits 67-68: Subvariant = 00
 - Bits 69-74: Timestamp magnitude (upper 6 bits)
-- Bits 75-78: Version (1=seconds, 2=milliseconds)
+- Bits 75-78: Version (1 and 3 = seconds, 2 and 4 = milliseconds)
 - Bits 79-127: Entropy (49 bits)
 
 Issuer Variant (Subvariant 01):
@@ -785,14 +799,45 @@ Version field (bits 75-78) is always positioned consistently across all subvaria
 
 **Timestamp Variant Versions:**
 
-- **v1** (0001): Seconds precision from Unix epoch
-- **v2** (0010): Milliseconds precision from Unix epoch
-- **v3+**: Reserved for future timestamp precision variants
+- **v1** (0001): Seconds precision, legacy low-word-first layout. Written by 1.3.1 and earlier, still decoded
+- **v2** (0010): Milliseconds precision, legacy low-word-first layout. Written by 1.3.1 and earlier, still decoded
+- **v3** (0011): Seconds precision, ordered layout (magnitude most significant bit first). Minted by `UUID.TA()`
+- **v4** (0100): Milliseconds precision, ordered layout (magnitude most significant bit first). Minted by `UUID.TB()`
+- **v5+**: Reserved for future timestamp variants
+
+Versions 3 and 4 write the magnitude's upper 31 bits (m62..m32) at bits 1-31 and its low 32 bits (m31..m0) at bits 32-63, so the byte order of the UUID, a hex string and a database `uuid` column all follow the timestamp. Versions 1 and 2 write the low 32 bits at bits 1-32 and the upper 31 at bits 33-63, which only sorts inside one 2^32 window (49.7 days for milliseconds, 136 years for seconds). `getTimestamp()` and the validators pick the layout from the version, so ids minted by earlier releases decode exactly as before.
 
 **Issuer Variant Versions:**
 
 - **v1** (0001): Basic issuer identification
 - **v2+**: Reserved for future issuer-based variants
+
+### Migrating stored ids to versions 3 and 4
+
+`UUID.TA()` and `UUID.TB()` mint versions 3 and 4 since this release. Ids you already stored carry versions 1 and 2 and keep working: they decode to the same timestamp, but they do not sort chronologically by byte order. To rewrite them, run `UUID.migrate()` on each stored id.
+
+```javascript
+import { UUID } from "@cldmv/uuid";
+
+const legacy = "e7f2b400-0000-018b-e005-c289f23865d3"; // version 2, minted by 1.3.1
+const uuid = new UUID(legacy);
+uuid.isLegacyTimestampLayout(); // => true, select these rows
+
+const migrated = UUID.migrate(legacy); // a new UUID, version 4
+migrated.toString(); // => "8000018b-cfe5-6800-e009-c289f23865d3"
+migrated.getTimestamp(); // => 1700000000000 (same as before)
+```
+
+What `migrate` does:
+
+- Version 1 becomes 3 and version 2 becomes 4. The sign, the timestamp value and the 49 entropy bits (bits 79-127) are copied unchanged; the timestamp bits are rewritten in the ordered layout, including bits 69-74.
+- The mapping is deterministic: the same legacy id always produces the same new id. Foreign keys and references can be rewritten consistently by migrating every column that holds the id.
+- It is idempotent. An id already at version 3 or 4, and any non-timestamp UUID (RFC UUIDs, issuer variants), comes back as an equal copy.
+- It accepts a `UUID`, a string or a 16-byte buffer, and throws only on input that cannot be parsed.
+
+Per row: read the stored id, call `UUID.migrate(id)` (or check `new UUID(id).isLegacyTimestampLayout()` first to find the rows that need it), and write back `migrated.toString()` or `migrated.toBuffer()`.
+
+Old and new ids interleave in byte order until every row is migrated, because versions 1 and 2 keep the legacy layout; ordering by byte value is only chronological once all of the ids involved are at version 3 or 4.
 
 ---
 
@@ -890,8 +935,8 @@ console.log("\nSubvariant Relationships:");
 console.log("  TA subvariant:", ta.getSubvariant()); // => 0
 console.log("  TB subvariant:", tb.getSubvariant()); // => 0
 console.log("  IA subvariant:", ia.getSubvariant()); // => 1
-console.log("  TA version:", ta.getVersion()); // => 1 (seconds)
-console.log("  TB version:", tb.getVersion()); // => 2 (milliseconds)
+console.log("  TA version:", ta.getVersion()); // => 3 (seconds)
+console.log("  TB version:", tb.getVersion()); // => 4 (milliseconds)
 ```
 
 ### Standard RFC UUID Examples
@@ -955,8 +1000,8 @@ npm run demo
 
 This interactive demonstration script showcases the RFC-ready specification:
 
-- **TA (Timestamp v1)**: Generates UUID with seconds precision, extracts timestamp
-- **TB (Timestamp v2)**: Generates UUID with milliseconds precision, extracts timestamp
+- **TA (Timestamp v3)**: Generates UUID with seconds precision, extracts timestamp
+- **TB (Timestamp v4)**: Generates UUID with milliseconds precision, extracts timestamp
 - **IA (Issuer v1)**: Generates UUID with issuer ID 404, shows issuer category
 - **Bit Field Verification**: Displays all specification fields (variant, subvariant, version, issuer ID)
 - **Negative Timestamps**: Demonstrates pre-epoch date support with proper encoding
@@ -968,7 +1013,7 @@ Example output excerpt:
 
 ```
 ════════════════════════════════════════════════════════════════════════════════
-  UUID.TA() - Timestamp Variant v1 (Seconds Precision)
+  UUID.TA() - Timestamp Variant (Seconds Precision)
 ════════════════════════════════════════════════════════════════════════════════
 
 Generated UUID:
