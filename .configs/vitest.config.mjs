@@ -13,33 +13,25 @@
  *
  */
 
-import { defineConfig } from "vitest/config";
+import { defineConfig, mergeConfig } from "vitest/config";
+import { devCondition } from "@cldmv/configs/vitest.config.mjs";
 
-export default defineConfig({
-	resolve: {
-		// IMPORTANT: this *replaces* the defaults, so keep the usual ones too
-		conditions: [
-			"uuid-dev", // your custom branch
-			"module",
-			"browser",
-			"development|production" // keep the special one for other deps
-		]
-	},
-	ssr: {
-		// Vitest often goes through SSR resolve pipeline even in node/jsdom tests
-		resolve: {
-			conditions: ["uuid-dev", "node", "development|production"]
+import { fileURLToPath } from "node:url";
+// Project root, so devCondition() reads this package's package.json.
+const root = fileURLToPath(new URL("..", import.meta.url));
+
+export default mergeConfig(
+	devCondition({ root }),
+	defineConfig({
+		test: {
+			include: ["test/**/*.test.vitest.{js,mjs,cjs}", "tests/**/*.test.vitest.{js,mjs,cjs}"],
+			exclude: ["node_modules"],
+			environment: "node",
+			globals: true,
+			testTimeout: 20000,
+			env: {
+				NODE_ENV: "uuid-dev"
+			}
 		}
-	},
-	test: {
-		include: ["test/**/*.test.vitest.{js,mjs,cjs}", "tests/**/*.test.vitest.{js,mjs,cjs}"],
-		exclude: ["node_modules"],
-		environment: "node",
-		globals: true,
-		testTimeout: 20000,
-		nodeOptions: ["--conditions=uuid-dev"],
-		env: {
-			NODE_ENV: "uuid-dev"
-		}
-	}
-});
+	})
+);
