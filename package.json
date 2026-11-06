@@ -85,7 +85,6 @@
 	"scripts": {
 		"build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsup",
 		"build:ci": "npm run lint --if-present && npm run format:check --if-present && npm run types:build && npm run build",
-		"build:types": "node -e \"require('node:fs').rmSync('types', { recursive: true, force: true })\" && tsc --project .configs/tsconfig.dts.jsonc",
 		"prepack": "npm run build",
 		"demo": "node scripts/demo-custom-uuids.mjs",
 		"test": "node tests/run-vitest.mjs && npm run test:cjs && npm run test:types",
