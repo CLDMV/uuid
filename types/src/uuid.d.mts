@@ -508,10 +508,9 @@ export class UUID {
     getInfo(): object;
     /**
      * Handle type coercion for different contexts
-     * @param {string} hint - Type hint ('string', 'number', or 'default')
      * @returns {string} UUID string representation
      */
-    [Symbol.toPrimitive](hint: string): string;
+    [Symbol.toPrimitive](): string;
 }
 export namespace UUID {
     let NIL: string;
