@@ -139,7 +139,7 @@ on:
                 description: "Command to run type checking"
                 type: string
                 required: false
-                default: "npm run test:types"
+                default: "npm run types:check"
             skip_type_check:
                 description: "Skip the type-check step in the coverage-badge job"
                 type: boolean
@@ -273,13 +273,11 @@ jobs:
             upload_coverage_artifact: ${{ github.event.inputs.upload_coverage_artifact != 'false' }}
 
             # ── Type check (runs inside the coverage-badge job) ────────────────────
-            # Skipped deliberately: uuid is a plain JS library. `.configs/tsconfig.dts.jsonc`
-            # runs with `checkJs: false` — tsc only emits/validates the hand-authored
-            # `.d.mts` declarations (build:types), it never type-checks the JS source itself,
-            # so there is no meaningful JS type-check command to run here. The vitest suite
-            # and ESLint are the correctness/static-analysis gates.
-            type_check_command: ${{ github.event.inputs.type_check_command || 'npm run test:types' }}
-            skip_type_check: true
+            # `types:check` type-checks the hand-written `.d.mts` declarations (tsc --noEmit on
+            # .configs/tsconfig.dts.jsonc; checkJs is off, so the JS source itself isn't checked).
+            # `test:types` is the separate consumer test of the built types and runs inside `test`.
+            type_check_command: ${{ github.event.inputs.type_check_command || 'npm run types:check' }}
+            skip_type_check: ${{ github.event.inputs.skip_type_check == 'true' }}
 
             # ── PR coverage badge ─────────────────────────────────────────────────
             # Injects a Shields.io badge + breakdown table directly into the PR body
