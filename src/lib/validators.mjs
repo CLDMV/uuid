@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:32-07:00 (1790980412)
+ *	@Last modified time: 2026-11-02T21:25:21-08:00 (1793683521)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -20,7 +20,14 @@
  * All validations reference specific bit positions and specification requirements.
  */
 
-import { VARIANT_BITS, SUBVARIANT_TIMESTAMP, SUBVARIANT_ISSUER, ISSUER_CATEGORIES, ISSUER_ID_MASK } from "./constants.mjs";
+import {
+	VARIANT_BITS,
+	SUBVARIANT_TIMESTAMP,
+	SUBVARIANT_ISSUER,
+	ISSUER_CATEGORIES,
+	ISSUER_ID_MASK,
+	isOrderedVersion
+} from "./constants.mjs";
 import { BitUtils } from "./bit-utils.mjs";
 import { toHex } from "@cldmv/uuid/bytes";
 
@@ -154,9 +161,20 @@ class UUIDValidator {
 		const signBit = BitUtils.getBitsAsNumber(uuidBuffer, 0, 1);
 		results.fields.timestampSign = signBit;
 
-		// Extract lower 63 bits (bits 1-63)
+		// Extract the raw segment A bits (bits 1-63), exactly as stored
 		const lower63 = BitUtils.getBits(uuidBuffer, 1, 63);
 		results.fields.timestampLower63 = lower63;
+
+		// Versions 3 and 4 store the magnitude most significant bit first, so the
+		// segment is the magnitude's lower 63 bits as-is. Versions 1 and 2 (and any
+		// other version) use the legacy layout: the low 32 magnitude bits at bits
+		// 1-32 and the upper 31 at bits 33-63.
+		let magnitudeLower63 = lower63;
+		if (!isOrderedVersion(results.fields.version)) {
+			const legacyLow32 = BigInt(BitUtils.getBitsAsNumber(uuidBuffer, 1, 32));
+			const legacyUpper31 = BigInt(BitUtils.getBitsAsNumber(uuidBuffer, 33, 31));
+			magnitudeLower63 = (legacyUpper31 << 32n) | legacyLow32;
+		}
 
 		// Extract timestamp continuation bits (bits 69-74)
 		const timestampContinuation = BitUtils.getBitsAsNumber(uuidBuffer, 69, 6);
@@ -173,7 +191,7 @@ class UUIDValidator {
 
 		// Reconstruct 70-bit timestamp (69 bits magnitude + 1 sign bit)
 		// Bits 1-63 (63 bits) + bits 69-74 (6 bits) = 69 bits magnitude
-		const magnitude = (BigInt(timestampContinuation) << 63n) | lower63;
+		const magnitude = (BigInt(timestampContinuation) << 63n) | magnitudeLower63;
 		results.fields.timestampMagnitude = magnitude;
 
 		// Apply negative ordering rule if negative
@@ -302,7 +320,6 @@ class UUIDValidator {
 
 		for (let i = 0; i < 16; i++) {
 			for (let bit = 0; bit < 8; bit++) {
-				const bitPos = i * 8 + bit;
 				const isImmutable = (immutableMask[i] >> (7 - bit)) & 1;
 
 				if (!isImmutable) {

@@ -154,18 +154,40 @@ This rule is mandatory.
 
 ### 8.2 Timestamp versions
 
-Timestamp Version 1 — Seconds resolution:
+Timestamp Version 1 — Seconds resolution (legacy layout):
 
     - Timestamp represents seconds from epoch.
     - Uses the 70-bit signed timestamp model.
+    - Segment A stores the low 32 bits of the magnitude at bits 1–32 and magnitude bits 62..32 at bits 33–63. Byte order is not chronological across a 2^32 boundary.
     - Bits 69–74 and 79–127 are defined by the timestamp-v1 specification.
+    - Kept so ids already minted decode unchanged. New ids SHOULD use Version 3.
 
-Timestamp Version 2 — Milliseconds resolution:
+Timestamp Version 2 — Milliseconds resolution (legacy layout):
 
     - Timestamp represents milliseconds from epoch.
     - Uses the 70-bit signed timestamp model.
+    - Segment A uses the same low-word-first layout as Version 1.
     - Bits 69–74 are currently undefined unless later specified.
     - Bits 79–127 are defined by the timestamp-v2 specification.
+    - Kept so ids already minted decode unchanged. New ids SHOULD use Version 4.
+
+Timestamp Version 3 — Seconds resolution (ordered layout):
+
+    - Timestamp represents seconds from epoch.
+    - Uses the 70-bit signed timestamp model.
+    - Segment A stores the magnitude most significant bit first: magnitude bits 62..32 at bits 1–31 and magnitude bits 31..0 at bits 32–63. The byte order of the UUID follows the timestamp order (section 7.3).
+    - Bits 69–74 hold magnitude bits 68..63.
+    - Bits 79–127 are defined by the timestamp-v1 specification.
+
+Timestamp Version 4 — Milliseconds resolution (ordered layout):
+
+    - Timestamp represents milliseconds from epoch.
+    - Uses the 70-bit signed timestamp model.
+    - Segment A uses the same ordered layout as Version 3.
+    - Bits 69–74 hold magnitude bits 68..63.
+    - Bits 79–127 are defined by the timestamp-v2 specification.
+
+A Version 1 id and a Version 3 id with the same timestamp and entropy differ only in the version bits and the arrangement of the magnitude bits, so a Version 1 or 2 id converts to Version 3 or 4 without loss.
 
 ---
 

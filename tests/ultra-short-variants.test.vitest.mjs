@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:38-07:00 (1790980418)
+ *	@Last modified time: 2026-11-02T21:25:22-08:00 (1793683522)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -21,13 +21,13 @@
  */
 
 import { describe, test, expect } from "vitest";
-import { UUID, ISSUER_CATEGORIES } from "../src/uuid.mjs";
+import { UUID } from "../src/uuid.mjs";
 import { VARIANT_BITS, SUBVARIANT_ISSUER, SUBVARIANT_TIMESTAMP } from "../src/lib/constants.mjs";
 import { UUIDValidator } from "../src/lib/validators.mjs";
 import { BitUtils } from "../src/lib/bit-utils.mjs";
 
 describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
-	test("should create TA (Timestamp Variant v1 - seconds) and verify all data", () => {
+	test("should create TA (Timestamp Variant v3 - seconds, mints version 3) and verify all data", () => {
 		const timestamp = Date.now();
 		const uuid = UUID.TA(timestamp);
 
@@ -47,7 +47,7 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 		expect(uuid.isIssuerVariant()).toBe(false);
 
 		// Verify version
-		expect(uuid.getVersion()).toBe(1);
+		expect(uuid.getVersion()).toBe(3);
 
 		// Verify timestamp variant does NOT have issuer ID
 		expect(uuid.getIssuerID()).toBe(null);
@@ -56,7 +56,7 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 		const buffer = uuid.toBuffer();
 		expect(BitUtils.getBitsAsNumber(buffer, 64, 3)).toBe(VARIANT_BITS);
 		expect(BitUtils.getBitsAsNumber(buffer, 67, 2)).toBe(SUBVARIANT_TIMESTAMP);
-		expect(BitUtils.getBitsAsNumber(buffer, 75, 4)).toBe(1);
+		expect(BitUtils.getBitsAsNumber(buffer, 75, 4)).toBe(3);
 
 		// Verify validator sees it correctly
 		const validation = UUIDValidator.validateCompleteUUID(buffer);
@@ -64,7 +64,7 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 		expect(validation.isUUID).toBe(true);
 		expect(validation.fields.variant).toBe(VARIANT_BITS);
 		expect(validation.fields.subvariant).toBe(SUBVARIANT_TIMESTAMP);
-		expect(validation.fields.version).toBe(1);
+		expect(validation.fields.version).toBe(3);
 
 		// Verify getInfo() returns complete data
 		const info = uuid.getInfo();
@@ -72,13 +72,13 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 		expect(info.isUUID).toBe(true);
 		expect(info.variant).toBe(VARIANT_BITS);
 		expect(info.subvariant).toBe(SUBVARIANT_TIMESTAMP);
-		expect(info.version).toBe(1);
+		expect(info.version).toBe(3);
 		expect(info.isTimestampVariant).toBe(true);
 		expect(info.isIssuerVariant).toBe(false);
 		expect(info.issuerID).toBe(null);
 	});
 
-	test("should create TB (Timestamp Variant v2 - milliseconds) and verify all data", () => {
+	test("should create TB (Timestamp Variant v4 - milliseconds, mints version 4) and verify all data", () => {
 		const timestamp = Date.now();
 		const uuid = UUID.TB(timestamp);
 
@@ -98,7 +98,7 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 		expect(uuid.isIssuerVariant()).toBe(false);
 
 		// Verify version
-		expect(uuid.getVersion()).toBe(2);
+		expect(uuid.getVersion()).toBe(4);
 
 		// Verify timestamp variant does NOT have issuer ID
 		expect(uuid.getIssuerID()).toBe(null);
@@ -107,7 +107,7 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 		const buffer = uuid.toBuffer();
 		expect(BitUtils.getBitsAsNumber(buffer, 64, 3)).toBe(VARIANT_BITS);
 		expect(BitUtils.getBitsAsNumber(buffer, 67, 2)).toBe(SUBVARIANT_TIMESTAMP);
-		expect(BitUtils.getBitsAsNumber(buffer, 75, 4)).toBe(2);
+		expect(BitUtils.getBitsAsNumber(buffer, 75, 4)).toBe(4);
 
 		// Verify validator sees it correctly
 		const validation = UUIDValidator.validateCompleteUUID(buffer);
@@ -115,7 +115,7 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 		expect(validation.isUUID).toBe(true);
 		expect(validation.fields.variant).toBe(VARIANT_BITS);
 		expect(validation.fields.subvariant).toBe(SUBVARIANT_TIMESTAMP);
-		expect(validation.fields.version).toBe(2);
+		expect(validation.fields.version).toBe(4);
 
 		// Verify getInfo() returns complete data
 		const info = uuid.getInfo();
@@ -123,7 +123,7 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 		expect(info.isUUID).toBe(true);
 		expect(info.variant).toBe(VARIANT_BITS);
 		expect(info.subvariant).toBe(SUBVARIANT_TIMESTAMP);
-		expect(info.version).toBe(2);
+		expect(info.version).toBe(4);
 		expect(info.isTimestampVariant).toBe(true);
 		expect(info.isIssuerVariant).toBe(false);
 		expect(info.issuerID).toBe(null);
@@ -199,8 +199,8 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 		expect(uuidTB.isTimestampVariant()).toBe(true);
 
 		// But have different versions
-		expect(uuidTA.getVersion()).toBe(1);
-		expect(uuidTB.getVersion()).toBe(2);
+		expect(uuidTA.getVersion()).toBe(3);
+		expect(uuidTB.getVersion()).toBe(4);
 		expect(uuidTA.getVersion()).not.toBe(uuidTB.getVersion());
 	});
 
@@ -225,13 +225,11 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 	});
 
 	test("should create TA with default timestamp (Date.now())", () => {
-		const beforeTime = Date.now();
 		const uuid = UUID.TA();
-		const afterTime = Date.now();
 
 		// Should create successfully without explicit timestamp
 		expect(uuid instanceof UUID).toBe(true);
-		expect(uuid.getVersion()).toBe(1);
+		expect(uuid.getVersion()).toBe(3);
 		expect(uuid.isTimestampVariant()).toBe(true);
 
 		// The timestamp should be within a reasonable range
@@ -240,13 +238,11 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 	});
 
 	test("should create TB with default timestamp (Date.now())", () => {
-		const beforeTime = Date.now();
 		const uuid = UUID.TB();
-		const afterTime = Date.now();
 
 		// Should create successfully without explicit timestamp
 		expect(uuid instanceof UUID).toBe(true);
-		expect(uuid.getVersion()).toBe(2);
+		expect(uuid.getVersion()).toBe(4);
 		expect(uuid.isTimestampVariant()).toBe(true);
 
 		// The timestamp should be within a reasonable range
@@ -269,13 +265,13 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 		// Verify TA data persisted
 		expect(reconstructedTA.getVariant()).toBe(VARIANT_BITS);
 		expect(reconstructedTA.getSubvariant()).toBe(SUBVARIANT_TIMESTAMP);
-		expect(reconstructedTA.getVersion()).toBe(1);
+		expect(reconstructedTA.getVersion()).toBe(3);
 		expect(reconstructedTA.isTimestampVariant()).toBe(true);
 
 		// Verify TB data persisted
 		expect(reconstructedTB.getVariant()).toBe(VARIANT_BITS);
 		expect(reconstructedTB.getSubvariant()).toBe(SUBVARIANT_TIMESTAMP);
-		expect(reconstructedTB.getVersion()).toBe(2);
+		expect(reconstructedTB.getVersion()).toBe(4);
 		expect(reconstructedTB.isTimestampVariant()).toBe(true);
 
 		// Verify IA data persisted
@@ -302,12 +298,12 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 		// Verify TA data persisted
 		expect(reconstructedTA.getVariant()).toBe(VARIANT_BITS);
 		expect(reconstructedTA.getSubvariant()).toBe(SUBVARIANT_TIMESTAMP);
-		expect(reconstructedTA.getVersion()).toBe(1);
+		expect(reconstructedTA.getVersion()).toBe(3);
 
 		// Verify TB data persisted
 		expect(reconstructedTB.getVariant()).toBe(VARIANT_BITS);
 		expect(reconstructedTB.getSubvariant()).toBe(SUBVARIANT_TIMESTAMP);
-		expect(reconstructedTB.getVersion()).toBe(2);
+		expect(reconstructedTB.getVersion()).toBe(4);
 
 		// Verify IA data persisted
 		expect(reconstructedIA.getVariant()).toBe(VARIANT_BITS);
@@ -390,7 +386,7 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 			expect(uuid.isTimestampVariant()).toBe(true);
 			expect(uuid.getVariant()).toBe(VARIANT_BITS);
 			expect(uuid.getSubvariant()).toBe(SUBVARIANT_TIMESTAMP);
-			expect(uuid.getVersion()).toBe(1);
+			expect(uuid.getVersion()).toBe(3);
 
 			// Verify timestamp extraction
 			const extracted = uuid.getTimestamp();
@@ -424,7 +420,7 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 			expect(uuid.isTimestampVariant()).toBe(true);
 			expect(uuid.getVariant()).toBe(VARIANT_BITS);
 			expect(uuid.getSubvariant()).toBe(SUBVARIANT_TIMESTAMP);
-			expect(uuid.getVersion()).toBe(2);
+			expect(uuid.getVersion()).toBe(4);
 
 			// Verify timestamp extraction
 			const extracted = uuid.getTimestamp();

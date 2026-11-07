@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:30-07:00 (1790980410)
+ *	@Last modified time: 2026-11-02T21:25:21-08:00 (1793683521)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -67,6 +67,36 @@ export const VERSION_START_BIT = 75;
  * @constant {number}
  */
 export const VERSION_BIT_COUNT = 4;
+
+/**
+ * Timestamp versions that store seconds: 1 (legacy layout) and 3 (ordered layout). Every other timestamp version stores milliseconds.
+ * @constant {number[]}
+ */
+export const TIMESTAMP_SECONDS_VERSIONS = [1, 3];
+
+/**
+ * Timestamp versions that lay the magnitude out most significant bit first in segment A: 3 (seconds) and 4 (milliseconds). Every other version, including 1 and 2, keeps the legacy low-word-first layout so ids minted before the ordered layout decode unchanged.
+ * @constant {number[]}
+ */
+export const TIMESTAMP_ORDERED_VERSIONS = [3, 4];
+
+/**
+ * Whether a timestamp version stores seconds (versions 1 and 3) rather than milliseconds
+ * @param {number} version - Timestamp variant version
+ * @returns {boolean} True for seconds precision
+ */
+export function isSecondsVersion(version) {
+	return TIMESTAMP_SECONDS_VERSIONS.includes(version);
+}
+
+/**
+ * Whether a timestamp version uses the ordered (most significant bit first) layout (versions 3 and 4)
+ * @param {number} version - Timestamp variant version
+ * @returns {boolean} True for the ordered layout
+ */
+export function isOrderedVersion(version) {
+	return TIMESTAMP_ORDERED_VERSIONS.includes(version);
+}
 
 /**
  * Issuer ID field start bit position (bits 79-88 per spec)
