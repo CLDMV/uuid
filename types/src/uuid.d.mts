@@ -90,8 +90,9 @@ export class UUID {
     static createIssuerVariant(issuerID: number, version: number, entropy?: Uint8Array | null): UUID;
     /**
      * Create a new Timestamp Variant UUID
+     * Versions 1 and 3 store seconds, versions 2 and 4 store milliseconds. Versions 3 and 4 lay the magnitude out most significant bit first (byte order is chronological); versions 1 and 2 keep the legacy low-word-first layout.
      * @param {number|Date|null|undefined} timestamp - Timestamp value (null/undefined defaults to the current time)
-     * @param {number} version - Version number
+     * @param {number} version - Version number (1 or 3 for seconds, 2 or 4 for milliseconds)
      * @param {Uint8Array|null} [entropy] - Optional entropy for bits 79-127
      * @returns {UUID} New UUID instance
      */
@@ -107,14 +108,14 @@ export class UUID {
     /**
      * Create a timestamp-based UUID (short name alias)
      * @param {number|Date|null|undefined} timestamp - Timestamp value (null/undefined defaults to the current time)
-     * @param {number} version - Version number
+     * @param {number} version - Version number (1 or 3 for seconds, 2 or 4 for milliseconds)
      * @param {Uint8Array|null} [entropy] - Optional entropy for bits 79-127
      * @returns {UUID} New UUID instance
      */
     static timestamp(timestamp: number | Date | null | undefined, version: number, entropy?: Uint8Array | null): UUID;
     /**
-     * Create Timestamp Variant v1 UUID (ultra-short alias)
-     * Subvariant 00 - Timestamp-based identification (seconds precision)
+     * Create a Timestamp Variant UUID in seconds (ultra-short alias)
+     * Subvariant 00 - Timestamp-based identification (seconds precision). Mints version 3, the ordered layout; version 1 (legacy layout) is still decoded.
      * @param {number|Date|null} [timestamp] - Timestamp value (optional, defaults to the current time)
      * @param {Uint8Array|null} [entropy] - Optional entropy for bits 79-127
      * @returns {UUID} New UUID instance
@@ -129,13 +130,22 @@ export class UUID {
      */
     static IA(issuerID: number, entropy?: Uint8Array | null): UUID;
     /**
-     * Create Timestamp Variant v2 UUID (ultra-short alias)
-     * Subvariant 00 - Timestamp-based identification (milliseconds precision)
+     * Create a Timestamp Variant UUID in milliseconds (ultra-short alias)
+     * Subvariant 00 - Timestamp-based identification (milliseconds precision). Mints version 4, the ordered layout; version 2 (legacy layout) is still decoded.
      * @param {number|Date|null} [timestamp] - Timestamp value (optional, defaults to the current time)
      * @param {Uint8Array|null} [entropy] - Optional entropy for bits 79-127
      * @returns {UUID} New UUID instance
      */
     static TB(timestamp?: number | Date | null, entropy?: Uint8Array | null): UUID;
+    /**
+     * Rewrite a legacy timestamp id (version 1 or 2) into the ordered layout (version 3 or 4)
+     * The sign, the timestamp value and the 49 entropy bits (bits 79-127) are carried over unchanged, so the mapping is deterministic: the same legacy id always migrates to the same new id. Ids already at version 3 or 4, and every non-timestamp UUID, come back as an equal copy. Throws only when the input cannot be parsed.
+     * @param {UUID|string|Uint8Array} input - A UUID instance, a UUID string, or a 16-byte buffer
+     * @returns {UUID} New UUID instance
+     * @example
+     * UUID.migrate("e7f2b400-0000-018b-e005-c289f23865d3").toString(); // version 2 -> version 4, same timestamp
+     */
+    static migrate(input: UUID | string | Uint8Array): UUID;
     /**
      * Get the shared issuer registry instance
      * @returns {Promise<import("./lib/issuer-registry.mjs").IssuerRegistry>} Shared registry instance
@@ -355,10 +365,24 @@ export class UUID {
     private _parseFromData;
     /**
      * Set 70-bit timestamp according to specification
-     * @param {number} timestampValue - Timestamp value (in seconds for v1, milliseconds for v2)
+     * @param {number} timestampValue - Timestamp value (in seconds for versions 1 and 3, milliseconds for versions 2 and 4)
+     * @param {boolean} [ordered] - True for the ordered layout (versions 3 and 4), false for the legacy layout (versions 1 and 2)
      * @private
      */
     private _setTimestamp;
+    /**
+     * Write the 69-bit stored magnitude (already in negative-ordering form) into segment A (bits 1-63) and bits 69-74
+     * @param {bigint} storedMagnitude - Stored 69-bit magnitude
+     * @param {boolean} ordered - True for the ordered layout (versions 3 and 4), false for the legacy layout (versions 1 and 2)
+     * @private
+     */
+    private _setStoredMagnitude;
+    /**
+     * Read the 69-bit stored magnitude (negative-ordering form) from segment A and bits 69-74, choosing the layout by version
+     * @returns {bigint} Stored 69-bit magnitude
+     * @private
+     */
+    private _getStoredMagnitude;
     /**
      * Fill remaining bits with entropy while preserving immutable fields
      * @param {Uint8Array|null} [entropy] - Entropy data
@@ -428,8 +452,8 @@ export class UUID {
      * Get the version/variant identifier (TA, TB, IA for custom variants, or RFC version number)
      * @returns {string|number|null} Version identifier (e.g., "TA", "TB", "IA", 1-8 for RFC, or null if invalid)
      * @example
-     * uuid.version(); // => "TA" for Timestamp v1
-     * uuid.version(); // => "TB" for Timestamp v2
+     * uuid.version(); // => "TA" for Timestamp v3 (and legacy v1)
+     * uuid.version(); // => "TB" for Timestamp v4 (and legacy v2)
      * uuid.version(); // => "IA" for Issuer v1
      * uuid.version(); // => 4 for RFC v4
      */
@@ -440,8 +464,14 @@ export class UUID {
      */
     getIssuerCategory(): string | null;
     /**
+     * Check whether this is a Timestamp Variant UUID in the legacy low-word-first layout (versions 1 and 2)
+     * Select stored ids to rewrite with {@link UUID.migrate}.
+     * @returns {boolean} True for timestamp-variant versions 1 and 2
+     */
+    isLegacyTimestampLayout(): boolean;
+    /**
      * Get the timestamp value from a Timestamp Variant UUID
-     * @returns {number|null} Timestamp value in the stored precision (seconds for v1, milliseconds for v2+), or null if not a Timestamp Variant
+     * @returns {number|null} Timestamp value in the stored precision (seconds for versions 1 and 3, milliseconds for versions 2 and 4), or null if not a Timestamp Variant
      */
     getTimestamp(): number | null;
     /**

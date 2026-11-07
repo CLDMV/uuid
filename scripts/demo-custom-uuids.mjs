@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:29-07:00 (1790980409)
+ *	@Last modified time: 2026-11-02T21:25:20-08:00 (1793683520)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -94,8 +94,8 @@ function verifyUUID(uuid, expected, originalTimestamp = null) {
 			console.log();
 			console.log(colors.bright + "Timestamp Information:" + colors.reset);
 
-			// TA (v1) stores seconds, TB (v2) stores milliseconds
-			const isSeconds = info.version === 1;
+			// TA (v3, legacy v1) stores seconds, TB (v4, legacy v2) stores milliseconds
+			const isSeconds = info.version === 1 || info.version === 3;
 			const timestampUnit = isSeconds ? "(s)" : "(ms)";
 			printValue(`Extracted Timestamp ${timestampUnit}`, info.timestamp, originalTimestamp);
 
@@ -146,11 +146,11 @@ function demonstrateCustomUUIDs() {
 	console.log("╚════════════════════════════════════════════════════════════════════════════════╝");
 	console.log(colors.reset);
 
-	// Test 1: TA - Timestamp Variant v1 (seconds precision)
-	printHeader("UUID.TA() - Timestamp Variant v1 (Seconds Precision)");
+	// Test 1: TA - Timestamp Variant v3 (seconds precision)
+	printHeader("UUID.TA() - Timestamp Variant v3 (Seconds Precision)");
 	console.log("Description: Timestamp-based UUID with seconds precision");
 	console.log("Subvariant:  00 (Timestamp Variant)");
-	console.log("Version:     1 (seconds)\n");
+	console.log("Version:     3 (seconds, ordered layout)\n");
 
 	const timestamp1 = Math.floor(Date.now() / 1000); // TA uses seconds
 	const uuidTA = UUID.TA(timestamp1);
@@ -161,7 +161,7 @@ function demonstrateCustomUUIDs() {
 			isUUID: true,
 			variant: 0b111,
 			subvariant: 0b00,
-			version: 1,
+			version: 3,
 			isTimestampVariant: true,
 			isIssuerVariant: false,
 			issuerID: null,
@@ -170,11 +170,11 @@ function demonstrateCustomUUIDs() {
 		timestamp1
 	);
 
-	// Test 2: TB - Timestamp Variant v2 (milliseconds precision)
-	printHeader("UUID.TB() - Timestamp Variant v2 (Milliseconds Precision)");
+	// Test 2: TB - Timestamp Variant v4 (milliseconds precision)
+	printHeader("UUID.TB() - Timestamp Variant v4 (Milliseconds Precision)");
 	console.log("Description: Timestamp-based UUID with milliseconds precision");
 	console.log("Subvariant:  00 (Timestamp Variant)");
-	console.log("Version:     2 (milliseconds)\n");
+	console.log("Version:     4 (milliseconds, ordered layout)\n");
 
 	const timestamp2 = Date.now();
 	const uuidTB = UUID.TB(timestamp2);
@@ -185,7 +185,7 @@ function demonstrateCustomUUIDs() {
 			isUUID: true,
 			variant: 0b111,
 			subvariant: 0b00,
-			version: 2,
+			version: 4,
 			isTimestampVariant: true,
 			isIssuerVariant: false,
 			issuerID: null,
@@ -216,12 +216,12 @@ function demonstrateCustomUUIDs() {
 
 	// Test 4: Verify TA and TB share same subvariant
 	printHeader("Verification: TA and TB Share Subvariant 00");
-	console.log("Both TA (v1) and TB (v2) are Timestamp Variants with subvariant 00.\n");
+	console.log("Both TA (v3) and TB (v4) are Timestamp Variants with subvariant 00.\n");
 	console.log("They differ only in their VERSION field:\n");
 
 	printValue("TA Subvariant", uuidTA.getSubvariant(), uuidTB.getSubvariant());
-	printValue("TA Version", uuidTA.getVersion(), 1);
-	printValue("TB Version", uuidTB.getVersion(), 2);
+	printValue("TA Version", uuidTA.getVersion(), 3);
+	printValue("TB Version", uuidTB.getVersion(), 4);
 	console.log();
 
 	// Test 5: Verify IA uses different subvariant

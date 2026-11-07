@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:35-07:00 (1790980415)
+ *	@Last modified time: 2026-11-02T21:25:22-08:00 (1793683522)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -17,11 +17,12 @@
  * Custom UUID Timestamp Variant v2
  *
  * Subvariant 00 - Timestamp-based identification with milliseconds precision
- * Ultra-short alias: TB
+ * Legacy layout; the ultra-short alias TB now refers to v4 (ordered layout).
  *
  * Bit Layout:
  * - Bits 0: Sign bit (0 = negative, 1 = positive)
- * - Bits 1-63: Lower 63 bits of timestamp magnitude
+ * - Bits 1-32: Lower 32 bits of timestamp magnitude
+ * - Bits 33-63: Magnitude bits 62..32 (legacy low-word-first layout; kept so ids minted before versions 3 and 4 decode unchanged, new ids use v4)
  * - Bits 64-66: Variant (111)
  * - Bits 67-68: Subvariant (00)
  * - Bits 69-74: Upper 6 bits of timestamp magnitude
@@ -87,11 +88,6 @@ export function v2(timestamp = null, entropy = null) {
 
 	return buffer;
 }
-
-/**
- * Alias for v2 - TB (Timestamp B - milliseconds precision)
- */
-export const tb = v2;
 
 /**
  * Set 70-bit timestamp according to specification

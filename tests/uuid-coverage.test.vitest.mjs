@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-01T09:26:23-08:00 (1793553983)
+ *	@Last modified time: 2026-11-02T21:25:23-08:00 (1793683523)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -54,9 +54,9 @@ describe("UUID branch and alias coverage", () => {
 	});
 
 	it("should return dynamic custom version labels", () => {
-		const timestampV3 = UUID.createTimestampVariant(Date.now(), 3);
+		const timestampV5 = UUID.createTimestampVariant(Date.now(), 5);
 		const issuerV2 = UUID.createIssuerVariant(100, 2);
-		expect(timestampV3.version()).toBe("Timestamp v3");
+		expect(timestampV5.version()).toBe("Timestamp v5");
 		expect(issuerV2.version()).toBe("Issuer v2");
 	});
 

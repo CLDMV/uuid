@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:30-07:00 (1790980410)
+ *	@Last modified time: 2026-11-02T21:25:21-08:00 (1793683521)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -18,28 +18,28 @@
  */
 
 import { UUID } from "../src/uuid.mjs";
-import { ta, parseTimestampV1 } from "../src/lib/versions/timestamp/index.mjs";
-import { tb, parseTimestampV2 } from "../src/lib/versions/timestamp/index.mjs";
+import { ta, parseTimestampV3 } from "../src/lib/versions/timestamp/index.mjs";
+import { tb, parseTimestampV4 } from "../src/lib/versions/timestamp/index.mjs";
 import { ia, parseIssuerID, getIssuerCategory } from "../src/lib/versions/issuer/index.mjs";
 
 console.log("Testing Custom UUID Version Files and Variant Detection\n");
 
-// Test TA (Timestamp Variant v1 - seconds)
-console.log("=== TA (Timestamp Variant v1 - seconds) ===");
+// Test TA (Timestamp Variant v3 - seconds)
+console.log("=== TA (Timestamp Variant v3 - seconds) ===");
 const taBuffer = ta();
 const taHex = taBuffer.toString("hex");
 const taUuid = `${taHex.slice(0, 8)}-${taHex.slice(8, 12)}-${taHex.slice(12, 16)}-${taHex.slice(16, 20)}-${taHex.slice(20, 32)}`;
 console.log("Generated TA UUID:", taUuid);
-console.log("Timestamp (seconds):", parseTimestampV1(taBuffer));
+console.log("Timestamp (seconds):", parseTimestampV3(taBuffer));
 console.log();
 
-// Test TB (Timestamp Variant v2 - milliseconds)
-console.log("=== TB (Timestamp Variant v2 - milliseconds) ===");
+// Test TB (Timestamp Variant v4 - milliseconds)
+console.log("=== TB (Timestamp Variant v4 - milliseconds) ===");
 const tbBuffer = tb();
 const tbHex = tbBuffer.toString("hex");
 const tbUuid = `${tbHex.slice(0, 8)}-${tbHex.slice(8, 12)}-${tbHex.slice(12, 16)}-${tbHex.slice(16, 20)}-${tbHex.slice(20, 32)}`;
 console.log("Generated TB UUID:", tbUuid);
-console.log("Timestamp (milliseconds):", parseTimestampV2(tbBuffer));
+console.log("Timestamp (milliseconds):", parseTimestampV4(tbBuffer));
 console.log();
 
 // Test IA (Issuer Variant v1)

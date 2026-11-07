@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-01T12:13:46-08:00 (1793564026)
+ *	@Last modified time: 2026-11-02T21:25:22-08:00 (1793683522)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -135,6 +135,10 @@ const viaTimestamp: UUID = UUID.createTimestampVariant(undefined, 2);
 const viaIssuer: UUID = UUID.createIssuerVariant(ISSUER_CATEGORIES.UNASSIGNED, 1, new Uint8Array(16));
 const instance = new UUID();
 const fromString = new UUID(ta.toString());
+const migrated: UUID = UUID.migrate(fromString);
+const migratedFromString: UUID = UUID.migrate(ta.toString());
+const migratedFromBytes: UUID = UUID.migrate(ta.toBuffer());
+const isLegacy: boolean = migrated.isLegacyTimestampLayout();
 const ts: number | null = tb.getTimestamp();
 const issuerID: number | null = ia.getIssuerID();
 const bytes: Uint8Array = ta.toBuffer();
@@ -150,7 +154,7 @@ const report = await UUID.validate(ta.toBuffer());
 
 export {
 	same, sameLower, v1, v4, v4Random, v4Buf, v6, v7, v8, v1Node, v3, v5, nil, parsed,
-	text, fromArray, valid, rfcVersion, ta, tb, ia, viaTimestamp, viaIssuer, instance, fromString, ts, issuerID,
+	text, fromArray, valid, rfcVersion, ta, tb, ia, viaTimestamp, viaIssuer, instance, fromString, migrated, migratedFromString, migratedFromBytes, isLegacy, ts, issuerID,
 	bytes, asString, json, category, available, info, report
 };
 `
