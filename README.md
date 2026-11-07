@@ -14,17 +14,19 @@ The custom variants (`TA`, `TB`, `IA`) live in the variant `111` namespace, so t
 
 ## ✨ What's New
 
-### Latest: v1.3.2 (November 2026)
+### Latest: v1.4.0 (November 2026)
 
-- **Tooling release, no library changes**: the vitest config now uses `devCondition()` from `@cldmv/configs`, so tests really run against `src/` through the `uuid-dev` export condition, and CI type-checks the declarations with `types:check` instead of skipping the step ([#91](https://github.com/CLDMV/uuid/pull/91), [#93](https://github.com/CLDMV/uuid/pull/93)).
-- [View full v1.3.2 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.2.md)
+- **Timestamp ids sort by byte order**: `UUID.TA()` and `UUID.TB()` wrote the timestamp's low 32 bits ahead of its upper 31, so byte order followed time only inside one 2^32 window and reversed at every boundary (every 49.7 days for `TB`). Timestamp versions 3 (seconds) and 4 (milliseconds) carry the ordered layout and are what `TA()` and `TB()` mint now; versions 1 and 2 still decode to the same timestamps, so stored ids keep working ([#90](https://github.com/CLDMV/uuid/pull/90), fixes [#89](https://github.com/CLDMV/uuid/issues/89)).
+- **`UUID.migrate()`**: rewrites a stored legacy id to the ordered layout with the same timestamp and entropy bits, deterministically and idempotently; `isLegacyTimestampLayout()` selects the rows to migrate. Old and new ids interleave in byte order until every row is rewritten ([#90](https://github.com/CLDMV/uuid/pull/90)).
+- **Dev tooling**: lint and format scripts from `@cldmv/configs`, with the fleet pre-commit hook; thirteen lint errors and two files of formatting drift fixed, no behaviour change ([#96](https://github.com/CLDMV/uuid/pull/96)).
+- [View full v1.4.0 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.4.0.md)
 
 ### Recent Releases
 
+- **v1.3.2** (November 2026): tooling only, tests resolve `src/` through `devCondition()` and CI runs `types:check`, no library change ([#91](https://github.com/CLDMV/uuid/pull/91), [#93](https://github.com/CLDMV/uuid/pull/93)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.2.md))
 - **v1.3.1** (November 2026): `engines.node` is the runtime floor again (`>=16.12.0`); the 22.22.0 toolchain floor moves to `devEngines` ([#85](https://github.com/CLDMV/uuid/pull/85)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.1.md))
 - **v1.3.0** (November 2026): built from `src/` with tsup into `dist/`, `@cldmv/uuid/main` becomes a deprecated alias of the root, and `engines.node` went to `>=22.22.0` ([#78](https://github.com/CLDMV/uuid/issues/78), [#80](https://github.com/CLDMV/uuid/pull/80)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.0.md))
 - **v1.2.6** (October 2026): test toolchain update, `vitest` 5.0.3 and `@cldmv/vitest-runner` 1.5.3, dev-only, no runtime change ([#61](https://github.com/CLDMV/uuid/pull/61), [#64](https://github.com/CLDMV/uuid/pull/64)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.6.md))
-- **v1.2.5** (October 2026): `require()` works, real TypeScript types, and the Apache-2.0 `LICENSE` file ([#50](https://github.com/CLDMV/uuid/pull/50), [#54](https://github.com/CLDMV/uuid/pull/54), [#55](https://github.com/CLDMV/uuid/pull/55)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.5.md))
 
 📚 **For complete version history and detailed release notes, see the [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/) folder.**
 
