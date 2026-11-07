@@ -18,6 +18,7 @@ The custom variants (`TA`, `TB`, `IA`) live in the variant `111` namespace, so t
 
 - **Timestamp ids sort by byte order**: `UUID.TA()` and `UUID.TB()` wrote the timestamp's low 32 bits ahead of its upper 31, so byte order followed time only inside one 2^32 window and reversed at every boundary (every 49.7 days for `TB`). Timestamp versions 3 (seconds) and 4 (milliseconds) carry the ordered layout and are what `TA()` and `TB()` mint now; versions 1 and 2 still decode to the same timestamps, so stored ids keep working ([#90](https://github.com/CLDMV/uuid/pull/90), fixes [#89](https://github.com/CLDMV/uuid/issues/89)).
 - **`UUID.migrate()`**: rewrites a stored legacy id to the ordered layout with the same timestamp and entropy bits, deterministically and idempotently; `isLegacyTimestampLayout()` selects the rows to migrate. Old and new ids interleave in byte order until every row is rewritten ([#90](https://github.com/CLDMV/uuid/pull/90)).
+- **Dev tooling**: lint and format scripts from `@cldmv/configs`, with the fleet pre-commit hook; thirteen lint errors and two files of formatting drift fixed, no behaviour change ([#96](https://github.com/CLDMV/uuid/pull/96)).
 - [View full v1.4.0 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.4.0.md)
 
 ### Recent Releases
