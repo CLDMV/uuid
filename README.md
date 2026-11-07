@@ -14,17 +14,17 @@ The custom variants (`TA`, `TB`, `IA`) live in the variant `111` namespace, so t
 
 ## ✨ What's New
 
-### Latest: v1.3.1 (November 2026)
+### Latest: v1.3.2 (November 2026)
 
-- **`engines.node` is the runtime floor again**: `engines.node` is back to `>=16.12.0`, the version the package actually needs for `import`, instead of v1.3.0's `>=22.22.0`, so installs on older Node.js no longer get an engine warning. The 22.22.0 development toolchain floor moves to `devEngines`, which only applies to work on this repository. `require()` needs Node.js ^20.19.0 or >=22.13.0, and its error message now says so ([#85](https://github.com/CLDMV/uuid/pull/85)).
-- [View full v1.3.1 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.1.md)
+- **Tooling release, no library changes**: the vitest config now uses `devCondition()` from `@cldmv/configs`, so tests really run against `src/` through the `uuid-dev` export condition, and CI type-checks the declarations with `types:check` instead of skipping the step ([#91](https://github.com/CLDMV/uuid/pull/91), [#93](https://github.com/CLDMV/uuid/pull/93)).
+- [View full v1.3.2 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.2.md)
 
 ### Recent Releases
 
+- **v1.3.1** (November 2026): `engines.node` is the runtime floor again (`>=16.12.0`); the 22.22.0 toolchain floor moves to `devEngines` ([#85](https://github.com/CLDMV/uuid/pull/85)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.1.md))
 - **v1.3.0** (November 2026): built from `src/` with tsup into `dist/`, `@cldmv/uuid/main` becomes a deprecated alias of the root, and `engines.node` went to `>=22.22.0` ([#78](https://github.com/CLDMV/uuid/issues/78), [#80](https://github.com/CLDMV/uuid/pull/80)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.0.md))
 - **v1.2.6** (October 2026): test toolchain update, `vitest` 5.0.3 and `@cldmv/vitest-runner` 1.5.3, dev-only, no runtime change ([#61](https://github.com/CLDMV/uuid/pull/61), [#64](https://github.com/CLDMV/uuid/pull/64)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.6.md))
 - **v1.2.5** (October 2026): `require()` works, real TypeScript types, and the Apache-2.0 `LICENSE` file ([#50](https://github.com/CLDMV/uuid/pull/50), [#54](https://github.com/CLDMV/uuid/pull/54), [#55](https://github.com/CLDMV/uuid/pull/55)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.5.md))
-- **v1.2.4** (October 2026): dev tooling only, moves header maintenance to the shared CLDMV fix-headers config and stops the in-repo PR mirror check from reporting as skipped, no runtime change ([#46](https://github.com/CLDMV/uuid/pull/46), [#47](https://github.com/CLDMV/uuid/pull/47)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.4.md))
 
 📚 **For complete version history and detailed release notes, see the [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/) folder.**
 
