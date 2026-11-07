@@ -20,7 +20,14 @@
  * All validations reference specific bit positions and specification requirements.
  */
 
-import { VARIANT_BITS, SUBVARIANT_TIMESTAMP, SUBVARIANT_ISSUER, ISSUER_CATEGORIES, ISSUER_ID_MASK, isOrderedVersion } from "./constants.mjs";
+import {
+	VARIANT_BITS,
+	SUBVARIANT_TIMESTAMP,
+	SUBVARIANT_ISSUER,
+	ISSUER_CATEGORIES,
+	ISSUER_ID_MASK,
+	isOrderedVersion
+} from "./constants.mjs";
 import { BitUtils } from "./bit-utils.mjs";
 import { toHex } from "@cldmv/uuid/bytes";
 
