@@ -21,7 +21,7 @@
  */
 
 import { describe, test, expect } from "vitest";
-import { UUID, ISSUER_CATEGORIES } from "../src/uuid.mjs";
+import { UUID } from "../src/uuid.mjs";
 import { VARIANT_BITS, SUBVARIANT_ISSUER, SUBVARIANT_TIMESTAMP } from "../src/lib/constants.mjs";
 import { UUIDValidator } from "../src/lib/validators.mjs";
 import { BitUtils } from "../src/lib/bit-utils.mjs";
@@ -225,9 +225,7 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 	});
 
 	test("should create TA with default timestamp (Date.now())", () => {
-		const beforeTime = Date.now();
 		const uuid = UUID.TA();
-		const afterTime = Date.now();
 
 		// Should create successfully without explicit timestamp
 		expect(uuid instanceof UUID).toBe(true);
@@ -240,9 +238,7 @@ describe("Ultra-Short UUID Variant Methods (TA, TB, IA)", () => {
 	});
 
 	test("should create TB with default timestamp (Date.now())", () => {
-		const beforeTime = Date.now();
 		const uuid = UUID.TB();
-		const afterTime = Date.now();
 
 		// Should create successfully without explicit timestamp
 		expect(uuid instanceof UUID).toBe(true);

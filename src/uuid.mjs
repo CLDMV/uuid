@@ -664,10 +664,9 @@ class UUID {
 
 	/**
 	 * Handle type coercion for different contexts
-	 * @param {string} hint - Type hint ('string', 'number', or 'default')
 	 * @returns {string} UUID string representation
 	 */
-	[Symbol.toPrimitive](hint) {
+	[Symbol.toPrimitive]() {
 		return this.toString();
 	}
 
@@ -964,7 +963,7 @@ class UUID {
 		try {
 			const uuidInstance = new UUID(uuid);
 			return uuidInstance.version();
-		} catch (error) {
+		} catch {
 			// If parsing fails, try RFC version detection as fallback
 			if (typeof uuid === "string") {
 				return rfcUuids.version(uuid);

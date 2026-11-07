@@ -313,7 +313,6 @@ class UUIDValidator {
 
 		for (let i = 0; i < 16; i++) {
 			for (let bit = 0; bit < 8; bit++) {
-				const bitPos = i * 8 + bit;
 				const isImmutable = (immutableMask[i] >> (7 - bit)) & 1;
 
 				if (!isImmutable) {

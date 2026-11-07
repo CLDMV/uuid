@@ -554,6 +554,7 @@ UUID.detectVariant(UUID.IA(404)); // => "IA"
 ```
 
 **Parameters:**
+
 - `uuid` (string|Uint8Array|UUID): UUID to detect variant from
 
 **Returns:** String identifier ("TA", "TB", "IA", etc.) or version number (1-8) for RFC UUIDs
@@ -627,12 +628,13 @@ Generate a version 8 (custom/experimental) UUID. Version 8 provides an RFC-compa
 
 ```javascript
 const uuid = UUID.v8(); // Random data
-const customUuid = UUID.v8({ 
+const customUuid = UUID.v8({
 	data: new Uint8Array(16) // Your custom 16 bytes
 });
 ```
 
 **Parameters:**
+
 - `options.data` (Uint8Array, optional): Custom 16-byte data to use. If not provided, uses cryptographically random bytes.
 - `options.buf` (Uint8Array, optional): Buffer to write UUID into.
 - `options.offset` (number, optional): Offset in buffer to start writing.
@@ -698,7 +700,7 @@ UUID.X500; // X.500 DN namespace
 
 The custom UUID specification uses **variant 111** (bits 64-66) as the entry point into the extended namespace, maintaining full compatibility with RFC 4122/9562:
 
-```
+```text
 Bit Layout (128 bits total):
 ┌─────────────┬──────────┬───────────┬──────────┬─────────┬─────────────┬──────────┐
 │   0-63      │  64-66   │   67-68   │  69-74   │  75-78  │   79-88     │  89-127  │
@@ -1011,7 +1013,7 @@ This interactive demonstration script showcases the RFC-ready specification:
 
 Example output excerpt:
 
-```
+```text
 ════════════════════════════════════════════════════════════════════════════════
   UUID.TA() - Timestamp Variant (Seconds Precision)
 ════════════════════════════════════════════════════════════════════════════════
