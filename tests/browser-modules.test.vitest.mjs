@@ -45,7 +45,6 @@ describe("rng-browser", () => {
 
 	test("throws a clear error when globalThis.crypto.getRandomValues is unavailable", () => {
 		const original = globalThis.crypto;
-		// eslint-disable-next-line no-undef
 		Object.defineProperty(globalThis, "crypto", { value: undefined, configurable: true });
 		try {
 			expect(() => randomBytesBrowser(16)).toThrow(/getRandomValues/);

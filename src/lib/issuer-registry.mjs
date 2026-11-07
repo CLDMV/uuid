@@ -372,7 +372,7 @@ class IssuerRegistry {
 		};
 
 		// Count registered issuers
-		for (const [id, info] of this._registry.entries()) {
+		for (const info of this._registry.values()) {
 			switch (info.category) {
 				case "Category A":
 					stats.categoryA++;

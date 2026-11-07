@@ -23,7 +23,6 @@
 import { describe, test, expect } from "vitest";
 import { UUID, ISSUER_CATEGORIES } from "../src/uuid.mjs";
 import { VARIANT_BITS, SUBVARIANT_ISSUER, SUBVARIANT_TIMESTAMP } from "../src/lib/constants.mjs";
-import { UUIDValidator } from "../src/lib/validators.mjs";
 import { BitUtils } from "../src/lib/bit-utils.mjs";
 
 describe("Custom UUID Implementation", () => {

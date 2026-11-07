@@ -20,7 +20,14 @@
  * All validations reference specific bit positions and specification requirements.
  */
 
-import { VARIANT_BITS, SUBVARIANT_TIMESTAMP, SUBVARIANT_ISSUER, ISSUER_CATEGORIES, ISSUER_ID_MASK, isOrderedVersion } from "./constants.mjs";
+import {
+	VARIANT_BITS,
+	SUBVARIANT_TIMESTAMP,
+	SUBVARIANT_ISSUER,
+	ISSUER_CATEGORIES,
+	ISSUER_ID_MASK,
+	isOrderedVersion
+} from "./constants.mjs";
 import { BitUtils } from "./bit-utils.mjs";
 import { toHex } from "@cldmv/uuid/bytes";
 
@@ -313,7 +320,6 @@ class UUIDValidator {
 
 		for (let i = 0; i < 16; i++) {
 			for (let bit = 0; bit < 8; bit++) {
-				const bitPos = i * 8 + bit;
 				const isImmutable = (immutableMask[i] >> (7 - bit)) & 1;
 
 				if (!isImmutable) {
