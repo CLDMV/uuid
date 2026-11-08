@@ -13,43 +13,47 @@
  *
  */
 
-import base from "./vitest.config.mjs";
+import baseConfig from "./vitest.config.mjs";
 
-export default {
-	...base,
+// vitest.config.mjs is a function of the Vite mode, so resolve it first.
+export default (env) => {
+	const base = baseConfig(env);
+	return {
+		...base,
 
-	// CI: pick a pool and force it to 1 worker.
-	// Use forks for CI stability, but threads is fine too.
-	// pool: "forks",
-	maxForks: 1,
-	minForks: 1,
+		// CI: pick a pool and force it to 1 worker.
+		// Use forks for CI stability, but threads is fine too.
+		// pool: "forks",
+		maxForks: 1,
+		minForks: 1,
 
-	// Optional: if you choose pool: "threads" instead:
-	// pool: "threads",
-	maxThreads: 1,
-	minThreads: 1,
+		// Optional: if you choose pool: "threads" instead:
+		// pool: "threads",
+		maxThreads: 1,
+		minThreads: 1,
 
-	test: {
-		...base.test,
+		test: {
+			...base.test,
 
-		// CI: no file-level parallelism either (hard clamp)
-		maxWorkers: 1,
-		minWorkers: 1,
-		fileParallelism: false,
+			// CI: no file-level parallelism either (hard clamp)
+			maxWorkers: 1,
+			minWorkers: 1,
+			fileParallelism: false,
 
-		coverage: {
-			enabled: true,
-			provider: "v8",
-			// Real source only. src/index.cjs (the CJS entry wrapper) is exercised by
-			// tests/cjs/entry.test.cjs under node --test, which Vitest doesn't measure.
-			include: ["src/**/*.mjs"],
-			exclude: [
-				"src/data/**", // static JSON data, no executable logic
-				"scripts/**",
-				"tools/**"
-			],
-			reporter: ["text", "html", "json-summary"],
-			reportsDirectory: "coverage"
+			coverage: {
+				enabled: true,
+				provider: "v8",
+				// Real source only. src/index.cjs (the CJS entry wrapper) is exercised by
+				// tests/cjs/entry.test.cjs under node --test, which Vitest doesn't measure.
+				include: ["src/**/*.mjs"],
+				exclude: [
+					"src/data/**", // static JSON data, no executable logic
+					"scripts/**",
+					"tools/**"
+				],
+				reporter: ["text", "html", "json-summary"],
+				reportsDirectory: "coverage"
+			}
 		}
-	}
+	};
 };

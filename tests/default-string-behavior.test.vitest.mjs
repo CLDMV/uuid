@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:36-07:00 (1790980416)
+ *	@Last modified time: 2026-11-07T21:23:42-08:00 (1794115422)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -19,7 +19,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { UUID } from "../src/uuid.mjs";
+import { UUID } from "@cldmv/uuid";
 
 describe("UUID Default String Behavior", () => {
 	describe("Automatic String Conversion", () => {
