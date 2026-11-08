@@ -1063,9 +1063,10 @@ The test suites run against `src/` through this condition.
 ### Running Tests
 
 ```bash
-npm test                 # Run all tests (Vitest suites, then the entry and type tests)
+npm test                 # Run all tests (Vitest suites on src/, the entry tests, the suites on dist/, then the type tests)
 npm run test:watch       # Watch mode
 npm run test:cjs         # Build, then check the dist/ and src/ entries (Node's built-in test runner)
+npm run test:dist        # Build, then run the Vitest suites against dist/ instead of src/
 npm run test:types       # Build, then type-check a packed consumer project
 npm run coverage         # With coverage
 ```

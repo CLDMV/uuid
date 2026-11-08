@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:36-07:00 (1790980416)
+ *	@Last modified time: 2026-11-07T21:23:42-08:00 (1794115422)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -26,9 +26,9 @@ import { describe, test, expect } from "vitest";
 import crypto from "crypto";
 import { randomBytes as randomBytesBrowser } from "../src/lib/rng-browser.mjs";
 import { fromHex as fromHexBrowser, toHex as toHexBrowser, toBufferLike as toBufferLikeBrowser } from "../src/lib/bytes-browser.mjs";
-import { fromHex as fromHexNode, toHex as toHexNode } from "../src/lib/bytes.mjs";
+import { fromHex as fromHexNode, toHex as toHexNode } from "@cldmv/uuid/bytes";
 import { md5 as md5Browser, sha1 as sha1Browser } from "../src/lib/hash-browser.mjs";
-import { md5 as md5Node, sha1 as sha1Node } from "../src/lib/hash.mjs";
+import { md5 as md5Node, sha1 as sha1Node } from "@cldmv/uuid/hash";
 
 describe("rng-browser", () => {
 	test("returns a Uint8Array of the requested length", () => {

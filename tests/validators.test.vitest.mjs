@@ -20,6 +20,7 @@
  */
 
 import { describe, test, expect, vi } from "vitest";
+// UUIDValidator below is internal and reads the same ISSUER_CATEGORIES this test mutates, so this file stays on src/ for both.
 import { UUID, ISSUER_CATEGORIES } from "../src/uuid.mjs";
 import { VARIANT_BITS, SUBVARIANT_ISSUER, SUBVARIANT_TIMESTAMP } from "../src/lib/constants.mjs";
 import { UUIDValidator } from "../src/lib/validators.mjs";

@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:37-07:00 (1790980417)
+ *	@Last modified time: 2026-11-07T21:23:42-08:00 (1794115422)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -20,7 +20,7 @@
  */
 
 import { describe, test, expect } from "vitest";
-import { UUID, ISSUER_CATEGORIES } from "../src/uuid.mjs";
+import { UUID, ISSUER_CATEGORIES } from "@cldmv/uuid";
 import { VARIANT_BITS, SUBVARIANT_ISSUER } from "../src/lib/constants.mjs";
 import { IssuerRegistry } from "../src/lib/issuer-registry.mjs";
 import { UUIDValidator } from "../src/lib/validators.mjs";
