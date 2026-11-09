@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-09T04:45:36-08:00 (1794228336)
+ *	@Last modified time: 2026-11-09T04:55:28-08:00 (1794228928)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -20,7 +20,7 @@
  * on Web Crypto and the pure-JS SHA-1.
  */
 
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, onTestFinished, test, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 
@@ -74,7 +74,16 @@ describe("entropy() on the browser modules", () => {
 	});
 
 	test("many calls in one millisecond never repeat", () => {
-		vi.spyOn(Date, "now").mockReturnValue(1794247200999);
+		// A plain replacement, not a spy (a spy records every call), that throws if the helper spins.
+		let reads = 0;
+		const realNow = Date.now;
+		Date.now = () => {
+			if (++reads > 20_000) throw new Error("Date.now() read over 20000 times: the helper is spinning");
+			return 1794247200999;
+		};
+		onTestFinished(() => {
+			Date.now = realNow;
+		});
 		const seen = new Set();
 		for (let i = 0; i < 2048; i++) {
 			const e = entropy({ seed: "browser" });

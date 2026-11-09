@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-09T04:45:36-08:00 (1794228336)
+ *	@Last modified time: 2026-11-09T04:55:28-08:00 (1794228928)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -63,13 +63,49 @@ function expectedSeedBits(seed) {
 	return (digest[0] << 8) | digest[1];
 }
 
+const realNow = Date.now;
+
 /**
- * Pin Date.now() to a sequence: `values[i]` for the i-th read, the last value afterwards.
- * @param {...number} values - Clock readings
+ * Replace Date.now() with `read(n)` for the n-th reading. It throws after `maxReads` readings,
+ * so a spin bug fails with a clear message instead of running forever. It is a plain
+ * function, not a spy: a spy records every call and a long spin would exhaust the heap.
+ * @param {(n: number) => number} read - Reading for the n-th call (1-based)
+ * @param {number} [maxReads] - Readings allowed before it throws
+ * @returns {{ readonly reads: number }} Live count of readings
  */
-function clock(...values) {
-	let i = 0;
-	return vi.spyOn(Date, "now").mockImplementation(() => values[Math.min(i++, values.length - 1)]);
+function installClock(read, maxReads = 20_000) {
+	let reads = 0;
+	Date.now = () => {
+		reads++;
+		if (reads > maxReads) {
+			throw new Error(`Date.now() read ${reads} times, over the test's limit of ${maxReads}: the helper is spinning`);
+		}
+		return read(reads);
+	};
+	return {
+		get reads() {
+			return reads;
+		}
+	};
+}
+
+/**
+ * Pin Date.now() to a value that `set()` can change later.
+ * @param {number} value - Initial reading
+ * @param {number} [maxReads] - Readings allowed before it throws
+ * @returns {{ readonly reads: number, set: (next: number) => void }}
+ */
+function clock(value, maxReads) {
+	let current = value;
+	const counter = installClock(() => current, maxReads);
+	return {
+		get reads() {
+			return counter.reads;
+		},
+		set(next) {
+			current = next;
+		}
+	};
 }
 
 /**
@@ -111,6 +147,8 @@ function mintChecked(entropy, count, optionsFor = () => ({})) {
 }
 
 afterEach(() => {
+	Date.now = realNow;
+	vi.useRealTimers();
 	vi.restoreAllMocks();
 });
 
@@ -165,7 +203,7 @@ describe("uniqueness at millisecond precision", () => {
 	});
 
 	test("the counter starts each tick at a random value in 0-2047 and resets when the tick advances", async () => {
-		const spy = clock(T);
+		const time = clock(T);
 		const { entropy } = await fresh();
 		const first = fields(entropy()).counter;
 		expect(first).toBeGreaterThanOrEqual(0);
@@ -174,7 +212,7 @@ describe("uniqueness at millisecond precision", () => {
 
 		const starts = new Set();
 		for (let i = 1; i <= 64; i++) {
-			spy.mockReturnValue(T + i);
+			time.set(T + i);
 			const e = entropy();
 			expect(e.timestamp).toBe(T + i);
 			const { counter } = fields(e);
@@ -187,11 +225,14 @@ describe("uniqueness at millisecond precision", () => {
 });
 
 describe("seed", () => {
-	beforeEach(() => clock(T));
+	let time;
+	beforeEach(() => {
+		time = clock(T);
+	});
 
 	test("the seeded part is stable for a seed, across calls, ticks and fresh instances", async () => {
 		const a = (await fresh()).entropy({ seed: "quack" });
-		vi.mocked(Date.now).mockReturnValue(T + 5000);
+		time.set(T + 5000);
 		const b = (await fresh()).entropy({ seed: "quack" });
 		expect(fields(a).seed).toBe(expectedSeedBits("quack"));
 		expect(fields(b).seed).toBe(fields(a).seed);
@@ -249,8 +290,7 @@ describe("seed", () => {
 describe("counter overflow", () => {
 	test('"wait" (the "ms" default) spins until the clock reaches the next tick', async () => {
 		// Long enough on T for the counter (at most 4096 values) to run out, then T + 1.
-		let reads = 0;
-		vi.spyOn(Date, "now").mockImplementation(() => (++reads > 6000 ? T + 1 : T));
+		const time = installClock((n) => (n > 6000 ? T + 1 : T));
 		const { entropy } = await fresh();
 		// 4097 calls: at least one past what fits on T (at most 4096), and no more than fit on T + 1 (at least 2049 after a tick that held 2048)
 		const { results, ticks } = mintChecked(entropy, 4097, () => ({ seed: "burst" }));
@@ -260,58 +300,82 @@ describe("counter overflow", () => {
 		expect(firstOnNext).toBeGreaterThanOrEqual(2048);
 		expect(firstOnNext).toBeLessThanOrEqual(4096);
 		// it waited: the clock was read past the calls made, until it moved
-		expect(reads).toBeGreaterThan(6000);
+		expect(time.reads).toBeGreaterThan(6000);
 	});
 
 	test('"advance" moves to the next tick without waiting', async () => {
-		const spy = clock(T);
+		const time = clock(T);
 		const { entropy } = await fresh();
 		const { ticks } = mintChecked(entropy, 9000, () => ({ seed: "burst", onOverflow: "advance" }));
 		expect(ticks[0]).toBe(T);
 		expect(ticks.length).toBeGreaterThan(2);
 		expect(ticks).toEqual(ticks.map((_, i) => T + i));
 		// one clock read per call: no spinning
-		expect(spy).toHaveBeenCalledTimes(9000);
+		expect(time.reads).toBe(9000);
 	});
 
 	test('"s" defaults to "advance": a frozen second never blocks', async () => {
-		const spy = clock(T);
+		const time = clock(T);
 		const { entropy } = await fresh();
 		const second = Math.floor(T / 1000);
 		const { ticks } = mintChecked(entropy, 4097, () => ({ seed: "burst", precision: "s" }));
 		expect(ticks).toEqual([second, second + 1]);
-		expect(spy).toHaveBeenCalledTimes(4097);
+		expect(time.reads).toBe(4097);
 	});
 
 	test('"wait" with the clock behind the helper\'s tick advances instead of spinning', async () => {
-		const spy = clock(T + 100);
+		const time = clock(T + 100);
 		const { entropy } = await fresh();
 		entropy();
-		spy.mockReturnValue(T); // the clock went back
+		time.set(T); // the clock went back
 		const { ticks } = mintChecked(entropy, 4096);
 		expect(ticks).toEqual([T + 100, T + 101]);
-		expect(spy).toHaveBeenCalledTimes(4097);
+		expect(time.reads).toBe(4097);
 	});
 
 	test('"wait" stops spinning when the clock steps back during the wait', async () => {
 		// T until the counter has run out and the spin has started, then the clock steps back
 		// a minute and never reaches T + 1.
-		let reads = 0;
-		const spy = vi.spyOn(Date, "now").mockImplementation(() => (++reads > 5000 ? T - 60000 : T));
+		const time = installClock((n) => (n > 5000 ? T - 60000 : T));
 		const { entropy } = await fresh();
 		const { ticks } = mintChecked(entropy, 4097);
 		expect(ticks).toEqual([T, T + 1]);
 		// the first read past the step back ended the spin: after it, one read per call
-		expect(spy.mock.calls.length).toBeLessThan(4097 + 5000);
+		expect(time.reads).toBeLessThan(4097 + 5000);
+	});
+
+	test('"wait" on a frozen clock gives up after 1,000,000 readings and advances', async () => {
+		// The clock never moves. Each overflow may read it up to 1,000,000 times before the helper
+		// advances; after the first, the helper's tick is ahead of the clock, which advances
+		// without spinning.
+		const time = clock(T, 1_000_000 + 10_000);
+		const { entropy } = await fresh();
+		const { ticks } = mintChecked(entropy, 6000);
+		expect(ticks.slice(0, 2)).toEqual([T, T + 1]);
+		expect(ticks).toEqual(ticks.map((_, i) => T + i));
+		// one full spin, then one reading per call
+		expect(time.reads).toBe(6000 + 1_000_000);
+	});
+
+	test('"wait" returns under fake timers with a frozen Date.now', async () => {
+		vi.useFakeTimers({ now: T, toFake: ["Date"] });
+		// Count readings of the fake clock too, so a spin bug fails here instead of hanging.
+		const fakeNow = Date.now.bind(Date);
+		installClock(() => fakeNow(), 1_000_000 + 10_000);
+		const { entropy } = await fresh();
+		const { ticks } = mintChecked(entropy, 6000);
+		expect(ticks[0]).toBe(T);
+		expect(ticks.length).toBeGreaterThan(1);
+		expect(ticks).toEqual(ticks.map((_, i) => T + i));
 	});
 });
 
 describe("clock going backwards", () => {
 	test("stays on the last tick and keeps counting", async () => {
-		const spy = clock(T + 10);
+		const time = clock(T + 10);
 		const { entropy } = await fresh();
 		const a = entropy();
-		spy.mockReturnValue(T);
+		time.set(T);
 		const b = entropy();
 		expect(b.timestamp).toBe(T + 10);
 		expect(fields(b).counter).toBe(fields(a).counter + 1);
@@ -330,12 +394,12 @@ describe("precision", () => {
 	});
 
 	test('"s" and "ms" keep separate counters', async () => {
-		const spy = clock(T);
+		const time = clock(T);
 		const { entropy } = await fresh();
 		const s1 = fields(entropy({ precision: "s" })).counter;
 		entropy();
 		// a new millisecond inside the same second: the ms tick moves, the s counter goes on
-		spy.mockReturnValue(T + 1);
+		time.set(T + 1);
 		const s2 = entropy({ precision: "s" });
 		expect(fields(s2).counter).toBe(s1 + 1);
 		expect(s2.timestamp).toBe(Math.floor(T / 1000));

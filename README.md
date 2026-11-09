@@ -285,7 +285,7 @@ Builds the `entropy` argument for `UUID.TA()` / `UUID.TB()` from an optional see
 
 **Scope of the guarantee:** the counter lives in the module's own state, so it is per module instance and per worker or thread. Between instances, uniqueness rests on chance: two with the same seed that each mint an id on the same tick collide with probability about 2^-32 for that pair (2^-11 for the same counter start, times 2^-21 for the random bits), and about 2^-48 with no seed.
 
-**Clock:** the tick never moves backwards. If the clock goes back, the helper stays on the last tick it used and keeps counting, and on overflow it advances instead of waiting for the clock to catch up (also when the clock steps back during a wait). In browsers that coarsen `Date.now()` (some fingerprinting protections round it to 16.7 ms or 100 ms), an `"ms"` wait can spin for that long; pass `onOverflow: "advance"` there if blocking matters.
+**Clock:** the tick never moves backwards. If the clock goes back, the helper stays on the last tick it used and keeps counting, and on overflow it advances instead of waiting for the clock to catch up (also when the clock steps back during a wait). A wait also gives up after 1,000,000 readings with no change and advances the tick itself, so a frozen `Date.now()` (fake timers in a test suite, for example) can't hang it; the ids stay unique because they are stamped with the returned `timestamp`. In browsers that coarsen `Date.now()` (some fingerprinting protections round it to 16.7 ms or 100 ms), an `"ms"` wait can spin for that long; pass `onOverflow: "advance"` there if blocking matters.
 
 Browser-safe: the helper uses only the package's `rng` and `hash` modules, which switch to Web Crypto and a pure-JS SHA-1 under the `browser` condition.
 

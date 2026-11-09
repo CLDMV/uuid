@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-09T04:45:36-08:00 (1794228336)
+ *	@Last modified time: 2026-11-09T04:55:28-08:00 (1794228928)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -42,7 +42,9 @@
  * it used and keeps counting. When the counter runs out inside a tick, the helper either
  * spins until the clock reaches the next tick (`onOverflow: "wait"`, the default for "ms") or
  * moves to the next tick straight away (`onOverflow: "advance"`, the default for "s"). "wait"
- * also advances instead of spinning when the clock is, or steps, behind the helper's tick.
+ * also advances instead of spinning when the clock is, or steps, behind the helper's tick,
+ * and when the clock doesn't move for 1,000,000 readings in a row (a frozen `Date.now()`,
+ * as under fake timers), so a wait always ends.
  * Either way, the tick used is on the result as `.timestamp`; stamp the id with it
  * (`UUID.TB(e.timestamp, e)`), since only then does the no-repeat guarantee hold for the id.
  *
@@ -65,6 +67,10 @@ const COUNTER_START_RANGE = 2 ** (COUNTER_BITS - 1); // random start in 0-2047
 const SEED_SHIFT = 2 ** RANDOM_BITS;
 const COUNTER_SHIFT = 2 ** (SEED_BITS + RANDOM_BITS);
 const EMPTY = new Uint8Array(0);
+// Readings without progress after which an overflow "wait" gives up on the clock and advances
+// the tick itself. A real clock moves within a few thousand readings; a frozen one (fake
+// timers) never does.
+const SPIN_LIMIT = 1_000_000;
 
 /**
  * Per-precision clock state: the last tick handed out and the next counter value on it.
@@ -89,7 +95,7 @@ let cachedSeedBits = 0;
  * @typedef {object} EntropyOptions
  * @property {string|Uint8Array|null} [seed] - Value whose SHA-1 fills the 16 seed bits; omitted or null fills them with random bits
  * @property {"ms"|"s"} [precision] - Tick length for the counter: "ms" for TB (default), "s" for TA
- * @property {"wait"|"advance"} [onOverflow] - When the counter runs out inside a tick: "wait" spins until the clock reaches the next tick (default for "ms"), "advance" moves to the next tick without waiting (default for "s")
+ * @property {"wait"|"advance"} [onOverflow] - When the counter runs out inside a tick: "wait" spins until the clock reaches the next tick (default for "ms"; it advances instead if the clock steps back or stays frozen for 1,000,000 readings), "advance" moves to the next tick without waiting (default for "s")
  */
 
 /**
@@ -149,11 +155,12 @@ function nextSlot(precision, onOverflow) {
 		let next = clock.tick + 1;
 		if (onOverflow === "wait" && current === clock.tick) {
 			let reading = current;
-			while (reading === clock.tick) {
+			for (let spins = 0; reading === clock.tick && spins < SPIN_LIMIT; spins++) {
 				reading = now(precision);
 			}
 			// A reading below the tick means the clock stepped back during the spin; waiting for
-			// it to catch up could take as long as the step, so advance instead.
+			// it to catch up could take as long as the step, so advance instead. A reading still on
+			// the tick means the clock is frozen, so advance too.
 			if (reading > clock.tick) next = reading;
 		}
 		// "advance", or the clock is behind the helper's tick (it went backwards), where waiting

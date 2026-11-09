@@ -43,7 +43,7 @@ export type EntropyOptions = {
      */
     precision?: "ms" | "s" | undefined;
     /**
-     * - When the counter runs out inside a tick: "wait" spins until the clock reaches the next tick (default for "ms"), "advance" moves to the next tick without waiting (default for "s")
+     * - When the counter runs out inside a tick: "wait" spins until the clock reaches the next tick (default for "ms"; it advances instead if the clock steps back or stays frozen for 1,000,000 readings), "advance" moves to the next tick without waiting (default for "s")
      */
     onOverflow?: "wait" | "advance" | undefined;
 };
