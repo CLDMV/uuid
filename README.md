@@ -263,6 +263,48 @@ const timestamp = uuid.getTimestamp(); // Returns milliseconds
 const date = new Date(timestamp); // Convert to Date
 ```
 
+##### `UUID.entropy([options])`
+
+Builds the `entropy` argument for `UUID.TA()` / `UUID.TB()` from an optional seed. `TA()` and `TB()` don't change; the helper only fills the bytes they read. Two calls in one process on the same tick (millisecond by default) never return the same bytes, with or without a seed.
+
+**Parameters:**
+
+- `options.seed` (string|Uint8Array, optional): Its SHA-1 fills the 16 seed bits, so ids made with one seed share them. Without a seed those bits are random. The empty string counts as a seed.
+- `options.precision` (`"ms"`|`"s"`, optional): Tick length for the counter. `"ms"` (default) matches `TB()`; use `"s"` with `TA()`, which stores seconds.
+- `options.onOverflow` (`"wait"`|`"advance"`, optional): What happens when the counter runs out inside one tick. `"wait"` (default) spins until the clock reaches the next tick; `"advance"` moves to the next tick straight away, ahead of the clock.
+
+**Returns:** a 16-byte `Uint8Array` with bits 79-127 filled and the rest zero, plus a `timestamp` property: the tick the counter was taken on (milliseconds, or seconds with `precision: "s"`).
+
+**Bit layout** (the 49 bits `TA()`/`TB()` keep, bit 79 is the lowest bit of byte 9):
+
+- Bits 79-90: Counter (12 bits). Starts each tick at a random value in 0-2047 and counts up to 4095, so a process gets at least 2048 values per tick. As the most significant field, it also makes ids from one process in one tick sort in the order they were made.
+- Bits 91-106: Seed (16 bits). The first 16 bits of SHA-1 of the seed (UTF-8 for a string, the bytes as given for a `Uint8Array`), or random without a seed.
+- Bits 107-127: Random (21 bits), from the package's secure random source.
+
+Separate processes share no counter, so between them uniqueness rests on the random counter start and the random bits, which makes a collision very unlikely but not impossible. The tick never moves backwards: if the clock goes back, the helper stays on the last tick it used and keeps counting (and on overflow it advances instead of waiting for the clock to catch up).
+
+Stamp the id with the returned `timestamp` to keep the no-repeat guarantee even when a call lands on a tick boundary or the counter overflows. Passing `undefined` lets `TB()` read the clock again, which almost always gives the same tick.
+
+Browser-safe: the helper uses only the package's `rng` and `hash` modules, which switch to Web Crypto and a pure-JS SHA-1 under the `browser` condition.
+
+```javascript
+// TB, milliseconds
+const e = UUID.entropy({ seed: "rummage · main" });
+const id = UUID.TB(e.timestamp, e);
+
+// Short form: TB() reads the clock again
+const id2 = UUID.TB(undefined, UUID.entropy({ seed: "rummage · main" }));
+
+// No seed: the seed bits are random, the counter still prevents repeats
+const id3 = UUID.TB(undefined, UUID.entropy());
+
+// TA, seconds: count per second, and stamp with the second the counter used
+const s = UUID.entropy({ seed: "rummage · main", precision: "s", onOverflow: "advance" });
+const id4 = UUID.TA(s.timestamp, s);
+```
+
+With `precision: "s"`, a burst of more than 2048 ids in one second can overflow the counter; `"wait"` then blocks until the next second, so `"advance"` (stamped with `s.timestamp`) is usually the better choice for `TA()`.
+
 ##### `UUID.IA(issuerID, [entropy])`
 
 **Issuer Variant v1** (Subvariant 01)
