@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-09T04:55:28-08:00 (1794228928)
+ *	@Last modified time: 2026-11-09T05:05:23-08:00 (1794229523)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -64,8 +64,6 @@ export const RANDOM_BITS = 21;
 
 const COUNTER_MAX = 2 ** COUNTER_BITS - 1; // 4095
 const COUNTER_START_RANGE = 2 ** (COUNTER_BITS - 1); // random start in 0-2047
-const SEED_SHIFT = 2 ** RANDOM_BITS;
-const COUNTER_SHIFT = 2 ** (SEED_BITS + RANDOM_BITS);
 const EMPTY = new Uint8Array(0);
 // Readings without progress after which an overflow "wait" gives up on the clock and advances
 // the tick itself. A real clock moves within a few thousand readings; a frozen one (fake
@@ -136,7 +134,8 @@ function seedBits(seed) {
 function startTick(clock, tick) {
 	const r = randomBytes(2);
 	clock.tick = tick;
-	clock.counter = ((r[0] << 8) | r[1]) % COUNTER_START_RANGE;
+	// The top 11 random bits, 0-2047.
+	clock.counter = ((r[0] << 3) | (r[1] >> 5)) & (COUNTER_START_RANGE - 1);
 }
 
 /**
@@ -207,19 +206,20 @@ export function entropy(options = {}) {
 
 	const { tick, counter } = nextSlot(precision, onOverflow);
 
+	// r[0] low 5 bits + r[1] + r[2]: the 21 random bits; r[3], r[4]: the seed bits without a seed.
 	const r = randomBytes(5);
-	const random = ((r[0] << 16) | (r[1] << 8) | r[2]) & (SEED_SHIFT - 1);
 	const seedField = seed === null ? (r[3] << 8) | r[4] : seedBits(seed);
 
-	// 49-bit value: counter | seed | random. Below 2^49, so plain Number arithmetic is exact.
-	let value = counter * COUNTER_SHIFT + seedField * SEED_SHIFT + random;
-
+	// Pack counter (12) | seed (16) | random (21) into bit 79 and bytes 10-15, most
+	// significant first, with masks and shifts only.
 	const out = /** @type {EntropyBytes} */ (new Uint8Array(16));
-	for (let i = 15; i >= 10; i--) {
-		out[i] = value % 256;
-		value = Math.floor(value / 256);
-	}
-	out[9] = value; // the 49th bit, at bit 79 (the lowest bit of byte 9)
+	out[9] = (counter >> 11) & 0x01; // counter bit 11, at bit 79 (the lowest bit of byte 9)
+	out[10] = (counter >> 3) & 0xff; // counter bits 10-3
+	out[11] = ((counter & 0x07) << 5) | ((seedField >> 11) & 0x1f); // counter bits 2-0, seed bits 15-11
+	out[12] = (seedField >> 3) & 0xff; // seed bits 10-3
+	out[13] = ((seedField & 0x07) << 5) | (r[0] & 0x1f); // seed bits 2-0, random bits 20-16
+	out[14] = r[1]; // random bits 15-8
+	out[15] = r[2]; // random bits 7-0
 	out.timestamp = tick;
 	return out;
 }
