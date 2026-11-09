@@ -2,12 +2,12 @@
  *
  *	@Project: @cldmv/uuid
  *	@Filename: /tests/entropy.test.vitest.mjs
- *	@Date: 2026-11-09T10:00:00-08:00 (1794247200)
+ *	@Date: 2026-11-09T04:30:43-08:00 (1794227443)
  *	@Author: Nate Corcoran <CLDMV>
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-09T10:00:00-08:00 (1794247200)
+ *	@Last modified time: 2026-11-09T04:45:36-08:00 (1794228336)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -16,8 +16,9 @@
 /**
  * UUID.entropy() — the TA/TB entropy builder (uuid#102).
  *
- * The helper keeps per-process clock state, so every test loads a fresh copy of
- * src/lib/entropy.mjs (vi.resetModules + dynamic import) and pins Date.now().
+ * The helper keeps per-instance clock state, so every test loads a fresh copy of the package
+ * entry (vi.resetModules + dynamic import of "@cldmv/uuid", so `npm run test:dist` covers the
+ * build too) and pins Date.now().
  */
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -28,12 +29,13 @@ import { toHex } from "@cldmv/uuid/bytes";
 const T = 1794247200123; // a fixed millisecond
 
 /**
- * Load a fresh copy of the entropy module (clean clock state).
- * @returns {Promise<typeof import("../src/lib/entropy.mjs")>}
+ * Load a fresh copy of the package (clean clock state) and return its entropy helper.
+ * @returns {Promise<{ entropy: (options?: object) => Uint8Array & { timestamp: number } }>}
  */
 async function fresh() {
 	vi.resetModules();
-	return import("../src/lib/entropy.mjs");
+	const { UUID: FreshUUID } = await import("@cldmv/uuid");
+	return { entropy: (options) => FreshUUID.entropy(options) };
 }
 
 /**
@@ -70,6 +72,44 @@ function clock(...values) {
 	return vi.spyOn(Date, "now").mockImplementation(() => values[Math.min(i++, values.length - 1)]);
 }
 
+/**
+ * Mint `count` entropies and check the invariants every result must hold: only bits 79-127
+ * set, the counter within 12 bits, every (tick, counter) pair unique, the last counter on a
+ * tick that overflowed is 4095, and the stamped ids on each tick sort in the order minted.
+ * @param {(options?: object) => Uint8Array & { timestamp: number }} entropy - Helper under test
+ * @param {number} count - How many to mint
+ * @param {(i: number) => object} [optionsFor] - Options for the i-th call
+ * @returns {{ results: Array<Uint8Array & { timestamp: number }>, ticks: number[] }}
+ */
+function mintChecked(entropy, count, optionsFor = () => ({})) {
+	const results = [];
+	const pairs = new Set();
+	const byTick = new Map();
+	for (let i = 0; i < count; i++) {
+		const options = optionsFor(i);
+		const e = entropy(options);
+		expect(Array.from(e.subarray(0, 9))).toEqual(new Array(9).fill(0));
+		expect(e[9] & 0xfe).toBe(0);
+		const { counter } = fields(e);
+		expect(counter).toBeLessThanOrEqual(4095);
+		pairs.add(`${e.timestamp}:${counter}`);
+		const id = options.precision === "s" ? UUID.TA(e.timestamp, e) : UUID.TB(e.timestamp, e);
+		if (!byTick.has(e.timestamp)) byTick.set(e.timestamp, []);
+		byTick.get(e.timestamp).push({ id: id.toString(), counter });
+		results.push(e);
+	}
+	expect(pairs.size).toBe(count);
+	const ticks = [...byTick.keys()];
+	for (const [index, tick] of ticks.entries()) {
+		const minted = byTick.get(tick);
+		const ids = minted.map((m) => m.id);
+		expect([...ids].sort()).toEqual(ids);
+		// every tick but the last one was left because its counter ran out at 4095
+		if (index < ticks.length - 1) expect(minted.at(-1).counter).toBe(4095);
+	}
+	return { results, ticks };
+}
+
 afterEach(() => {
 	vi.restoreAllMocks();
 });
@@ -87,12 +127,7 @@ describe("shape", () => {
 		expect(e.timestamp).toBe(T);
 	});
 
-	test("the field widths add up to the 49 bits TA/TB keep", async () => {
-		const { COUNTER_BITS, SEED_BITS, RANDOM_BITS } = await fresh();
-		expect(COUNTER_BITS + SEED_BITS + RANDOM_BITS).toBe(49);
-	});
-
-	test("UUID.entropy is the same helper", () => {
+	test("UUID.entropy on the statically imported class works too", () => {
 		const e = UUID.entropy({ seed: "x" });
 		expect(e.length).toBe(16);
 		expect(fields(e).seed).toBe(expectedSeedBits("x"));
@@ -100,37 +135,33 @@ describe("shape", () => {
 });
 
 describe("uniqueness at millisecond precision", () => {
-	test("many calls in one millisecond with one seed never repeat", async () => {
+	test("many calls in one millisecond with one seed never repeat a counter", async () => {
 		clock(T);
 		const { entropy } = await fresh();
-		const seen = new Set();
+		const { results, ticks } = mintChecked(entropy, 2048, () => ({ seed: "rummage · main" }));
+		expect(ticks).toEqual([T]);
 		let previous = null;
-		for (let i = 0; i < 2048; i++) {
-			const e = entropy({ seed: "rummage · main" });
-			expect(e.timestamp).toBe(T);
-			seen.add(toHex(e));
+		for (const e of results) {
 			const { counter, seed } = fields(e);
 			expect(seed).toBe(expectedSeedBits("rummage · main"));
 			if (previous !== null) expect(counter).toBe(previous + 1);
 			previous = counter;
 		}
-		expect(seen.size).toBe(2048);
+		expect(new Set(results.map((e) => toHex(e))).size).toBe(2048);
 	});
 
-	test("many calls in one millisecond without a seed never repeat", async () => {
+	test("many calls in one millisecond without a seed never repeat a counter", async () => {
 		clock(T);
 		const { entropy } = await fresh();
-		const seen = new Set();
-		for (let i = 0; i < 2048; i++) seen.add(toHex(entropy()));
-		expect(seen.size).toBe(2048);
+		const { ticks } = mintChecked(entropy, 2048);
+		expect(ticks).toEqual([T]);
 	});
 
-	test("mixing seeds in one millisecond still never repeats", async () => {
+	test("mixing seeds in one millisecond still never repeats a counter", async () => {
 		clock(T);
 		const { entropy } = await fresh();
-		const seen = new Set();
-		for (let i = 0; i < 2048; i++) seen.add(toHex(entropy({ seed: i % 2 ? "a" : null })));
-		expect(seen.size).toBe(2048);
+		const { ticks } = mintChecked(entropy, 2048, (i) => ({ seed: i % 2 ? "a" : null }));
+		expect(ticks).toEqual([T]);
 	});
 
 	test("the counter starts each tick at a random value in 0-2047 and resets when the tick advances", async () => {
@@ -158,7 +189,7 @@ describe("uniqueness at millisecond precision", () => {
 describe("seed", () => {
 	beforeEach(() => clock(T));
 
-	test("the seeded part is stable for a seed, across calls, ticks and fresh processes", async () => {
+	test("the seeded part is stable for a seed, across calls, ticks and fresh instances", async () => {
 		const a = (await fresh()).entropy({ seed: "quack" });
 		vi.mocked(Date.now).mockReturnValue(T + 5000);
 		const b = (await fresh()).entropy({ seed: "quack" });
@@ -216,48 +247,40 @@ describe("seed", () => {
 });
 
 describe("counter overflow", () => {
-	test('"wait" spins until the clock reaches the next tick and never repeats', async () => {
+	test('"wait" (the "ms" default) spins until the clock reaches the next tick', async () => {
 		// Long enough on T for the counter (at most 4096 values) to run out, then T + 1.
-		const reads = [];
-		let n = 0;
-		vi.spyOn(Date, "now").mockImplementation(() => {
-			const value = ++n > 6000 ? T + 1 : T;
-			reads.push(value);
-			return value;
-		});
+		let reads = 0;
+		vi.spyOn(Date, "now").mockImplementation(() => (++reads > 6000 ? T + 1 : T));
 		const { entropy } = await fresh();
-		const ids = new Set();
-		const ticks = [];
-		for (let i = 0; i < 4200; i++) {
-			const e = entropy({ seed: "burst" });
-			ticks.push(e.timestamp);
-			ids.add(UUID.TB(e.timestamp, e).toString());
-		}
-		expect(ids.size).toBe(4200);
-		const firstOnNext = ticks.indexOf(T + 1);
-		// between 2049 and 4096 values fit on T
+		// 4097 calls: at least one past what fits on T (at most 4096), and no more than fit on T + 1 (at least 2049 after a tick that held 2048)
+		const { results, ticks } = mintChecked(entropy, 4097, () => ({ seed: "burst" }));
+		expect(ticks).toEqual([T, T + 1]);
+		const firstOnNext = results.findIndex((e) => e.timestamp === T + 1);
+		// between 2048 and 4096 values fit on T
 		expect(firstOnNext).toBeGreaterThanOrEqual(2048);
 		expect(firstOnNext).toBeLessThanOrEqual(4096);
-		expect(ticks.slice(firstOnNext).every((t) => t === T + 1)).toBe(true);
 		// it waited: the clock was read past the calls made, until it moved
-		expect(reads.length).toBeGreaterThan(6000);
+		expect(reads).toBeGreaterThan(6000);
 	});
 
-	test('"advance" moves to the next tick without waiting and never repeats', async () => {
+	test('"advance" moves to the next tick without waiting', async () => {
 		const spy = clock(T);
 		const { entropy } = await fresh();
-		const ids = new Set();
-		const ticks = new Set();
-		for (let i = 0; i < 9000; i++) {
-			const e = entropy({ seed: "burst", onOverflow: "advance" });
-			ticks.add(e.timestamp);
-			ids.add(UUID.TB(e.timestamp, e).toString());
-		}
-		expect(ids.size).toBe(9000);
-		expect(Math.min(...ticks)).toBe(T);
-		expect(Math.max(...ticks)).toBeGreaterThan(T + 1);
+		const { ticks } = mintChecked(entropy, 9000, () => ({ seed: "burst", onOverflow: "advance" }));
+		expect(ticks[0]).toBe(T);
+		expect(ticks.length).toBeGreaterThan(2);
+		expect(ticks).toEqual(ticks.map((_, i) => T + i));
 		// one clock read per call: no spinning
 		expect(spy).toHaveBeenCalledTimes(9000);
+	});
+
+	test('"s" defaults to "advance": a frozen second never blocks', async () => {
+		const spy = clock(T);
+		const { entropy } = await fresh();
+		const second = Math.floor(T / 1000);
+		const { ticks } = mintChecked(entropy, 4097, () => ({ seed: "burst", precision: "s" }));
+		expect(ticks).toEqual([second, second + 1]);
+		expect(spy).toHaveBeenCalledTimes(4097);
 	});
 
 	test('"wait" with the clock behind the helper\'s tick advances instead of spinning', async () => {
@@ -265,16 +288,21 @@ describe("counter overflow", () => {
 		const { entropy } = await fresh();
 		entropy();
 		spy.mockReturnValue(T); // the clock went back
-		const ids = new Set();
-		const ticks = new Set();
-		for (let i = 0; i < 4200; i++) {
-			const e = entropy();
-			ticks.add(e.timestamp);
-			ids.add(`${e.timestamp}:${toHex(e)}`);
-		}
-		expect(ids.size).toBe(4200);
-		expect([...ticks]).toEqual([T + 100, T + 101]);
-		expect(spy).toHaveBeenCalledTimes(4201);
+		const { ticks } = mintChecked(entropy, 4096);
+		expect(ticks).toEqual([T + 100, T + 101]);
+		expect(spy).toHaveBeenCalledTimes(4097);
+	});
+
+	test('"wait" stops spinning when the clock steps back during the wait', async () => {
+		// T until the counter has run out and the spin has started, then the clock steps back
+		// a minute and never reaches T + 1.
+		let reads = 0;
+		const spy = vi.spyOn(Date, "now").mockImplementation(() => (++reads > 5000 ? T - 60000 : T));
+		const { entropy } = await fresh();
+		const { ticks } = mintChecked(entropy, 4097);
+		expect(ticks).toEqual([T, T + 1]);
+		// the first read past the step back ended the spin: after it, one read per call
+		expect(spy.mock.calls.length).toBeLessThan(4097 + 5000);
 	});
 });
 
@@ -305,14 +333,13 @@ describe("precision", () => {
 		const spy = clock(T);
 		const { entropy } = await fresh();
 		const s1 = fields(entropy({ precision: "s" })).counter;
-		const ms1 = fields(entropy()).counter;
-		// a new millisecond inside the same second: the ms counter resets, the s counter goes on
+		entropy();
+		// a new millisecond inside the same second: the ms tick moves, the s counter goes on
 		spy.mockReturnValue(T + 1);
 		const s2 = entropy({ precision: "s" });
 		expect(fields(s2).counter).toBe(s1 + 1);
 		expect(s2.timestamp).toBe(Math.floor(T / 1000));
 		expect(entropy().timestamp).toBe(T + 1);
-		expect(ms1).toBeLessThan(2048);
 	});
 });
 
@@ -332,23 +359,6 @@ describe("round-trip through TA/TB", () => {
 			// and the fields read back out of the id
 			expect(fields(bytes)).toEqual(fields(e));
 		}
-	});
-
-	test("the documented short form UUID.TB(undefined, entropy) works", () => {
-		const e = UUID.entropy({ seed: "rummage · main" });
-		const id = UUID.TB(undefined, e);
-		expect(id.getTimestamp()).toBe(T);
-		expect(fields(id.toBuffer()).seed).toBe(expectedSeedBits("rummage · main"));
-	});
-
-	test("ids from one process in one millisecond sort in the order they were made", async () => {
-		const { entropy } = await fresh();
-		const ids = [];
-		for (let i = 0; i < 500; i++) {
-			const e = entropy({ seed: "order" });
-			ids.push(UUID.TB(e.timestamp, e).toString());
-		}
-		expect([...ids].sort()).toEqual(ids);
 	});
 });
 

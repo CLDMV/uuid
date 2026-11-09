@@ -2,12 +2,12 @@
  *
  *	@Project: @cldmv/uuid
  *	@Filename: /src/lib/entropy.mjs
- *	@Date: 2026-11-09T10:00:00-08:00 (1794247200)
+ *	@Date: 2026-11-09T04:29:21-08:00 (1794227361)
  *	@Author: Nate Corcoran <CLDMV>
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-09T10:00:00-08:00 (1794247200)
+ *	@Last modified time: 2026-11-09T04:45:36-08:00 (1794228336)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -28,17 +28,23 @@
  * | 107-127   | 21    | Random                                                        |
  *
  * The counter starts each tick at a random value in 0-2047 and counts up to 4095, so a
- * process gets at least 2048 values per tick, and two processes rarely start on the same
- * value. Within one process, two calls on the same tick never return the same bytes: the
- * counter differs. Because the counter is the most significant field, ids minted from one
- * process in one tick also sort in the order they were made.
+ * process gets at least 2048 values per tick. Within one module instance, two calls on the
+ * same tick never get the same counter, so they never return the same bytes. The counter
+ * lives in this module's state: each worker, thread or separately loaded copy of the module
+ * has its own. Because the counter is the most significant field, ids minted from one
+ * instance in one tick also sort in the order they were made.
+ *
+ * Across instances, uniqueness rests on chance: two with the same seed that each mint an id
+ * on the same tick collide with probability about 2^-32 for that pair (2^-11 for the same
+ * counter start, times 2^-21 for the random bits), and about 2^-48 with no seed.
  *
  * The tick never moves backwards: if the clock goes back, the helper stays on the last tick
  * it used and keeps counting. When the counter runs out inside a tick, the helper either
- * spins until the clock reaches the next tick (`onOverflow: "wait"`, the default) or moves
- * to the next tick straight away (`onOverflow: "advance"`, also used by "wait" when the clock
- * is behind the helper's tick). Either way, the tick it used is on the result as
- * `.timestamp`, so the caller can stamp the id with it.
+ * spins until the clock reaches the next tick (`onOverflow: "wait"`, the default for "ms") or
+ * moves to the next tick straight away (`onOverflow: "advance"`, the default for "s"). "wait"
+ * also advances instead of spinning when the clock is, or steps, behind the helper's tick.
+ * Either way, the tick used is on the result as `.timestamp`; stamp the id with it
+ * (`UUID.TB(e.timestamp, e)`), since only then does the no-repeat guarantee hold for the id.
  *
  * Browser-safe: the only imports are the package's own `rng` and `hash` subpaths, which pick
  * Web Crypto and the pure-JS SHA-1 under the "browser" condition.
@@ -83,7 +89,7 @@ let cachedSeedBits = 0;
  * @typedef {object} EntropyOptions
  * @property {string|Uint8Array|null} [seed] - Value whose SHA-1 fills the 16 seed bits; omitted or null fills them with random bits
  * @property {"ms"|"s"} [precision] - Tick length for the counter: "ms" for TB (default), "s" for TA
- * @property {"wait"|"advance"} [onOverflow] - When the counter runs out inside a tick: "wait" spins until the clock reaches the next tick (default), "advance" moves to the next tick without waiting
+ * @property {"wait"|"advance"} [onOverflow] - When the counter runs out inside a tick: "wait" spins until the clock reaches the next tick (default for "ms"), "advance" moves to the next tick without waiting (default for "s")
  */
 
 /**
@@ -140,17 +146,19 @@ function nextSlot(precision, onOverflow) {
 		startTick(clock, current);
 	} else if (clock.counter > COUNTER_MAX) {
 		// Out of counter values on this tick.
+		let next = clock.tick + 1;
 		if (onOverflow === "wait" && current === clock.tick) {
-			let next = current;
-			while (next <= clock.tick) {
-				next = now(precision);
+			let reading = current;
+			while (reading === clock.tick) {
+				reading = now(precision);
 			}
-			startTick(clock, next);
-		} else {
-			// "advance", or the clock is behind the helper's tick (it went backwards), where
-			// waiting could take as long as the jump was.
-			startTick(clock, clock.tick + 1);
+			// A reading below the tick means the clock stepped back during the spin; waiting for
+			// it to catch up could take as long as the step, so advance instead.
+			if (reading > clock.tick) next = reading;
 		}
+		// "advance", or the clock is behind the helper's tick (it went backwards), where waiting
+		// could take as long as the jump was.
+		startTick(clock, next);
 	}
 	return { tick: clock.tick, counter: clock.counter++ };
 }
@@ -158,10 +166,11 @@ function nextSlot(precision, onOverflow) {
 /**
  * Build the `entropy` argument for `UUID.TA()` / `UUID.TB()`.
  *
- * Two calls in one process on the same tick never return the same bytes, with or without a
- * seed. Stamp the id with the returned `.timestamp` to keep that guarantee across a tick
- * boundary: `UUID.TB(e.timestamp, e)`. `UUID.TB(undefined, e)` reads the clock again, which
- * almost always gives the same tick.
+ * Two calls in one module instance on the same tick never return the same bytes, with or
+ * without a seed. Always stamp the id with the returned `.timestamp`: `UUID.TB(e.timestamp, e)`.
+ * Letting TB read the clock itself (`UUID.TB(undefined, e)`) gives up the no-repeat guarantee
+ * whenever the helper's tick differs from the clock: on overflow, with "advance", or after the
+ * clock steps back.
  *
  * @param {EntropyOptions} [options] - Seed, precision and overflow handling
  * @returns {EntropyBytes} 16-byte array (bits 79-127 filled, the rest zero) with the tick used as `.timestamp`
@@ -169,15 +178,16 @@ function nextSlot(precision, onOverflow) {
  * const e = entropy({ seed: "rummage · main" });
  * const id = UUID.TB(e.timestamp, e);
  * @example
- * // TA counts seconds
- * const e = entropy({ precision: "s" });
+ * // TA stores seconds: use precision "s" (the default "ms" would stamp TA with milliseconds)
+ * const e = entropy({ seed: "rummage · main", precision: "s" });
  * const id = UUID.TA(e.timestamp, e);
  */
 export function entropy(options = {}) {
 	if (options === null || typeof options !== "object") {
 		throw new TypeError("entropy() options must be an object");
 	}
-	const { seed = null, precision = "ms", onOverflow = "wait" } = options;
+	const { seed = null, precision = "ms" } = options;
+	const { onOverflow = precision === "s" ? "advance" : "wait" } = options;
 	if (seed !== null && typeof seed !== "string" && !(seed instanceof Uint8Array)) {
 		throw new TypeError("entropy() seed must be a string or a Uint8Array");
 	}

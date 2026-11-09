@@ -2,12 +2,12 @@
  *
  *	@Project: @cldmv/uuid
  *	@Filename: /tests/entropy-browser.test.vitest.mjs
- *	@Date: 2026-11-09T10:00:00-08:00 (1794247200)
+ *	@Date: 2026-11-09T04:31:07-08:00 (1794227467)
  *	@Author: Nate Corcoran <CLDMV>
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-09T10:00:00-08:00 (1794247200)
+ *	@Last modified time: 2026-11-09T04:45:36-08:00 (1794228336)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -27,7 +27,10 @@ import { createHash } from "node:crypto";
 vi.mock("@cldmv/uuid/rng", () => import("../src/lib/rng-browser.mjs"));
 vi.mock("@cldmv/uuid/hash", () => import("../src/lib/hash-browser.mjs"));
 
-const { entropy } = await import("../src/lib/entropy.mjs");
+// Through the package entry, so `npm run test:dist` runs the build: dist/ keeps the rng and
+// hash subpaths external, so the mocks above replace them there too.
+const { UUID } = await import("@cldmv/uuid");
+const entropy = (options) => UUID.entropy(options);
 
 afterEach(() => {
 	vi.restoreAllMocks();

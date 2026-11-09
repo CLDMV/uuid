@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-02T21:25:22-08:00 (1793683522)
+ *	@Last modified time: 2026-11-09T04:45:36-08:00 (1794228336)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -137,8 +137,10 @@ const seeded = UUID.entropy({ seed: "rummage · main" });
 const seededTick: number = seeded.timestamp;
 const seededBytes: Uint8Array = seeded;
 const tbSeeded: UUID = UUID.TB(seeded.timestamp, seeded);
-const taSeeded: UUID = UUID.TA(undefined, UUID.entropy({ seed: new Uint8Array(4), precision: "s", onOverflow: "advance" }));
-const unseeded: Uint8Array = UUID.entropy();
+const secondsEntropy = UUID.entropy({ seed: new Uint8Array(4), precision: "s", onOverflow: "advance" });
+const taSeeded: UUID = UUID.TA(secondsEntropy.timestamp, secondsEntropy);
+const unseededEntropy = UUID.entropy();
+const unseeded: UUID = UUID.TB(unseededEntropy.timestamp, unseededEntropy);
 const viaIssuer: UUID = UUID.createIssuerVariant(ISSUER_CATEGORIES.UNASSIGNED, 1, new Uint8Array(16));
 const instance = new UUID();
 const fromString = new UUID(ta.toString());

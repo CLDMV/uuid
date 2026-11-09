@@ -1,10 +1,11 @@
 /**
  * Build the `entropy` argument for `UUID.TA()` / `UUID.TB()`.
  *
- * Two calls in one process on the same tick never return the same bytes, with or without a
- * seed. Stamp the id with the returned `.timestamp` to keep that guarantee across a tick
- * boundary: `UUID.TB(e.timestamp, e)`. `UUID.TB(undefined, e)` reads the clock again, which
- * almost always gives the same tick.
+ * Two calls in one module instance on the same tick never return the same bytes, with or
+ * without a seed. Always stamp the id with the returned `.timestamp`: `UUID.TB(e.timestamp, e)`.
+ * Letting TB read the clock itself (`UUID.TB(undefined, e)`) gives up the no-repeat guarantee
+ * whenever the helper's tick differs from the clock: on overflow, with "advance", or after the
+ * clock steps back.
  *
  * @param {EntropyOptions} [options] - Seed, precision and overflow handling
  * @returns {EntropyBytes} 16-byte array (bits 79-127 filled, the rest zero) with the tick used as `.timestamp`
@@ -12,8 +13,8 @@
  * const e = entropy({ seed: "rummage · main" });
  * const id = UUID.TB(e.timestamp, e);
  * @example
- * // TA counts seconds
- * const e = entropy({ precision: "s" });
+ * // TA stores seconds: use precision "s" (the default "ms" would stamp TA with milliseconds)
+ * const e = entropy({ seed: "rummage · main", precision: "s" });
  * const id = UUID.TA(e.timestamp, e);
  */
 export function entropy(options?: EntropyOptions): EntropyBytes;
@@ -42,7 +43,7 @@ export type EntropyOptions = {
      */
     precision?: "ms" | "s" | undefined;
     /**
-     * - When the counter runs out inside a tick: "wait" spins until the clock reaches the next tick (default), "advance" moves to the next tick without waiting
+     * - When the counter runs out inside a tick: "wait" spins until the clock reaches the next tick (default for "ms"), "advance" moves to the next tick without waiting (default for "s")
      */
     onOverflow?: "wait" | "advance" | undefined;
 };

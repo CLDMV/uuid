@@ -140,12 +140,16 @@ export class UUID {
     /**
      * Build the `entropy` argument for `UUID.TA()` / `UUID.TB()` from an optional seed.
      * Fills the 49 entropy bits TA/TB keep (bits 79-127) with a per-tick counter (12 bits), the first 16 bits of SHA-1(seed) or random bits without a seed, and 21 random bits.
-     * Two calls in one process on the same tick never return the same bytes. Stamp the id with the returned `.timestamp` to keep that across a tick boundary.
-     * @param {import("./lib/entropy.mjs").EntropyOptions} [options] - Seed, precision ("ms" for TB, "s" for TA) and overflow handling
+     * Two calls in one module instance on the same tick never return the same bytes. Always stamp the id with the returned `.timestamp` (`UUID.TB(e.timestamp, e)`); `UUID.TB(undefined, e)` gives up the no-repeat guarantee on overflow, with "advance", or after the clock steps back.
+     * Use precision "s" with TA, which stores seconds.
+     * @param {import("./lib/entropy.mjs").EntropyOptions} [options] - Seed, precision ("ms" for TB, "s" for TA) and overflow handling ("wait" by default for "ms", "advance" for "s")
      * @returns {import("./lib/entropy.mjs").EntropyBytes} 16-byte array with the tick used as `.timestamp`
      * @example
      * const e = UUID.entropy({ seed: "rummage · main" });
      * const id = UUID.TB(e.timestamp, e);
+     * @example
+     * const s = UUID.entropy({ seed: "rummage · main", precision: "s" });
+     * const id = UUID.TA(s.timestamp, s);
      */
     static entropy(options?: import("./lib/entropy.mjs").EntropyOptions): import("./lib/entropy.mjs").EntropyBytes;
     /**
