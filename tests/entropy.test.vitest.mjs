@@ -426,6 +426,139 @@ describe("round-trip through TA/TB", () => {
 	});
 });
 
+/**
+ * Read the entropy a result carries: the last `bits` bits of the array, as a BigInt.
+ * @param {Uint8Array} e - Entropy bytes
+ * @param {number} bits - Requested length in bits
+ * @returns {bigint}
+ */
+function tail(e, bits) {
+	let value = 0n;
+	for (const byte of e) value = (value << 8n) | BigInt(byte);
+	return value & ((1n << BigInt(bits)) - 1n);
+}
+
+/**
+ * Check that nothing above the last `bits` bits is set.
+ * @param {Uint8Array} e - Entropy bytes
+ * @param {number} bits - Requested length in bits
+ */
+function expectOnlyTail(e, bits) {
+	let value = 0n;
+	for (const byte of e) value = (value << 8n) | BigInt(byte);
+	expect(value >> BigInt(bits)).toBe(0n);
+}
+
+describe("bits option", () => {
+	beforeEach(() => clock(T));
+
+	test("the default is 49 bits, the TB layout", async () => {
+		const { entropy } = await fresh();
+		const a = entropy({ seed: "len" });
+		const b = entropy({ seed: "len", bits: 49 });
+		for (const e of [a, b]) {
+			expect(e.length).toBe(16);
+			expect(Array.from(e.subarray(0, 9))).toEqual(new Array(9).fill(0));
+			expect(e[9] & 0xfe).toBe(0);
+			expect(fields(e).seed).toBe(expectedSeedBits("len"));
+		}
+		expect(fields(b).counter).toBe(fields(a).counter + 1);
+	});
+
+	test("bits: undefined is the default", async () => {
+		const { entropy } = await fresh();
+		const e = entropy({ seed: "len", bits: undefined });
+		expect(e.length).toBe(16);
+		expect(fields(e).seed).toBe(expectedSeedBits("len"));
+	});
+
+	test("a longer length fills the last `bits` bits: counter, then the seed fingerprint, then random", async () => {
+		const { entropy } = await fresh();
+		const first = entropy({ seed: "long", bits: 100 });
+		const second = entropy({ seed: "long", bits: 100 });
+		for (const e of [first, second]) {
+			expect(e.length).toBe(16);
+			expectOnlyTail(e, 100);
+			const v = tail(e, 100);
+			expect(Number((v >> 88n) & 0xfffn)).toBeLessThanOrEqual(4095);
+			expect(Number((v >> 72n) & 0xffffn)).toBe(expectedSeedBits("long"));
+			expect(e.timestamp).toBe(T);
+		}
+		expect(Number(tail(second, 100) >> 88n)).toBe(Number(tail(first, 100) >> 88n) + 1);
+		const randoms = new Set();
+		for (let i = 0; i < 32; i++) randoms.add((tail(entropy({ seed: "long", bits: 100 }), 100) & ((1n << 72n) - 1n)).toString());
+		expect(randoms.size).toBe(32);
+	});
+
+	test("a length over 128 bits grows the array to fit", async () => {
+		const { entropy } = await fresh();
+		for (const bits of [129, 256, 1000]) {
+			const e = entropy({ seed: "big", bits });
+			expect(e.length).toBe(Math.ceil(bits / 8));
+			expectOnlyTail(e, bits);
+			const v = tail(e, bits);
+			expect(Number((v >> BigInt(bits - 28)) & 0xffffn)).toBe(expectedSeedBits("big"));
+		}
+	});
+
+	test("a short length keeps the counter first and cuts the seed fingerprint to its top bits", async () => {
+		const { entropy } = await fresh();
+		const e = entropy({ seed: "short", bits: 20 });
+		expect(e.length).toBe(16);
+		expectOnlyTail(e, 20);
+		// 12 counter bits, then the top 8 bits of the fingerprint
+		expect(Number(tail(e, 20) & 0xffn)).toBe(expectedSeedBits("short") >> 8);
+	});
+
+	test("a length of exactly counter + seed has the full fingerprint and no random bits", async () => {
+		const { entropy } = await fresh();
+		const a = entropy({ seed: "exact", bits: 28 });
+		const b = entropy({ seed: "exact", bits: 28 });
+		expect(Number(tail(a, 28) & 0xffffn)).toBe(expectedSeedBits("exact"));
+		expect(Number(tail(b, 28) >> 16n)).toBe(Number(tail(a, 28) >> 16n) + 1);
+	});
+
+	test("under 12 bits only the counter's low bits are left", async () => {
+		const { entropy } = await fresh();
+		const a = entropy({ bits: 8 });
+		const b = entropy({ bits: 8 });
+		expect(a.length).toBe(16);
+		expectOnlyTail(a, 8);
+		expect(b[15]).toBe((a[15] + 1) & 0xff);
+	});
+
+	test("bits: 0 returns an all-zero array, still stamped with the tick", async () => {
+		const { entropy } = await fresh();
+		const e = entropy({ seed: "zero", bits: 0 });
+		expect(Array.from(e)).toEqual(new Array(16).fill(0));
+		expect(e.timestamp).toBe(T);
+	});
+
+	test("no repeats within one tick at a custom length", async () => {
+		for (const bits of [12, 40, 64, 128, 200]) {
+			// a fresh instance per length: 2048 calls fit on one tick from any counter start
+			const { entropy } = await fresh();
+			const seen = new Set();
+			for (let i = 0; i < 2048; i++) {
+				const e = entropy({ seed: "burst", bits });
+				seen.add(`${e.timestamp}:${toHex(e)}`);
+			}
+			expect(seen.size).toBe(2048);
+		}
+	});
+
+	test("the seed fingerprint is there whenever it fits, and random without a seed", async () => {
+		const { entropy } = await fresh();
+		for (const bits of [28, 49, 64, 128, 300]) {
+			const v = tail(entropy({ seed: "fits", bits }), bits);
+			expect(Number((v >> BigInt(bits - 28)) & 0xffffn)).toBe(expectedSeedBits("fits"));
+		}
+		const seeds = new Set();
+		for (let i = 0; i < 64; i++) seeds.add(Number((tail(entropy({ bits: 64 }), 64) >> 36n) & 0xffffn));
+		expect(seeds.size).toBeGreaterThan(32);
+	});
+});
+
 describe("argument validation", () => {
 	test("rejects bad options", async () => {
 		const { entropy } = await fresh();
@@ -434,5 +567,10 @@ describe("argument validation", () => {
 		expect(() => entropy({ seed: 42 })).toThrow(TypeError);
 		expect(() => entropy({ precision: "us" })).toThrow(RangeError);
 		expect(() => entropy({ onOverflow: "throw" })).toThrow(RangeError);
+		expect(() => entropy({ bits: "49" })).toThrow(TypeError);
+		expect(() => entropy({ bits: null })).toThrow(TypeError);
+		expect(() => entropy({ bits: -1 })).toThrow(RangeError);
+		expect(() => entropy({ bits: 1.5 })).toThrow(RangeError);
+		expect(() => entropy({ bits: Infinity })).toThrow(RangeError);
 	});
 });
