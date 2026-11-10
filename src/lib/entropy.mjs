@@ -29,7 +29,8 @@
  *
  * The counter starts each tick at a random value in 0-2047 and counts up to 4095, so a
  * process gets at least 2048 values per tick. Within one module instance, two calls on the
- * same tick never get the same counter, so they never return the same bytes. The counter
+ * same tick never get the same counter, so they never return the same bytes (at any length
+ * of 12 bits or more, which holds the whole counter). The counter
  * lives in this module's state: each worker, thread or separately loaded copy of the module
  * has its own. Because the counter is the most significant field, ids minted from one
  * instance in one tick also sort in the order they were made.
@@ -69,12 +70,14 @@ export const COUNTER_BITS = 12;
 export const SEED_BITS = 16;
 /** Width of the random field in bits. */
 export const RANDOM_BITS = 21;
-/** Default length in bits: the 49 entropy bits TA and TB keep (bits 79-127). */
-export const DEFAULT_BITS = COUNTER_BITS + SEED_BITS + RANDOM_BITS;
+/** Default length in bits: the 49 entropy bits TA and TB keep (bits 79-127), counter + seed + random. */
+export const DEFAULT_BITS = 49;
 
 const COUNTER_MAX = 2 ** COUNTER_BITS - 1; // 4095
 const COUNTER_START_RANGE = 2 ** (COUNTER_BITS - 1); // random start in 0-2047
 const EMPTY = new Uint8Array(0);
+// Most bytes asked of the random source in one call: crypto.getRandomValues' per-call limit.
+const RANDOM_CHUNK = 65_536;
 // Readings without progress after which an overflow "wait" gives up on the clock and advances
 // the tick itself. A real clock moves within a few thousand readings; a frozen one (fake
 // timers) never does.
@@ -94,7 +97,7 @@ let cachedSeed = null;
 let cachedSeedBits = 0;
 
 /**
- * Entropy bytes for TA / TB: a 16-byte array plus the tick the counter was taken on.
+ * Entropy bytes: a 16-byte array (longer for `bits` past 128) plus the tick the counter was taken on.
  * @typedef {Uint8Array & { timestamp: number }} EntropyBytes
  */
 
@@ -200,7 +203,7 @@ function nextSlot(precision, onOverflow) {
  * Build the `entropy` argument for `UUID.TA()` / `UUID.TB()`.
  *
  * Two calls in one module instance on the same tick never return the same bytes, with or
- * without a seed. Always stamp the id with the returned `.timestamp`: `UUID.TB(e.timestamp, e)`.
+ * without a seed, at any `bits` of 12 or more (under 12 the counter is cut and repeats). Always stamp the id with the returned `.timestamp`: `UUID.TB(e.timestamp, e)`.
  * Letting TB read the clock itself (`UUID.TB(undefined, e)`) gives up the no-repeat guarantee
  * whenever the helper's tick differs from the clock: on overflow, with "advance", or after the
  * clock steps back.
@@ -265,15 +268,15 @@ export function entropy(options = {}) {
 
 	if (randomWidth > 0) {
 		// The random field runs to the end of the array: a partial byte (its low bits), then
-		// whole bytes copied straight from the generator.
+		// whole bytes copied straight from the generator, in chunks the browser's
+		// crypto.getRandomValues accepts (it throws above 65,536 bytes per call).
 		const partial = randomWidth & 0x07;
 		const whole = randomWidth >> 3;
-		const r = randomBytes(whole + (partial > 0 ? 1 : 0));
 		if (partial > 0) {
-			out[out.length - whole - 1] |= r[0] & ((1 << partial) - 1);
-			out.set(r.subarray(1), out.length - whole);
-		} else {
-			out.set(r, out.length - whole);
+			out[out.length - whole - 1] |= randomBytes(1)[0] & ((1 << partial) - 1);
+		}
+		for (let at = out.length - whole; at < out.length; at += RANDOM_CHUNK) {
+			out.set(randomBytes(Math.min(RANDOM_CHUNK, out.length - at)), at);
 		}
 	}
 	out.timestamp = tick;

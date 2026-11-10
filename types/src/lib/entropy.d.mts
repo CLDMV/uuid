@@ -2,7 +2,7 @@
  * Build the `entropy` argument for `UUID.TA()` / `UUID.TB()`.
  *
  * Two calls in one module instance on the same tick never return the same bytes, with or
- * without a seed. Always stamp the id with the returned `.timestamp`: `UUID.TB(e.timestamp, e)`.
+ * without a seed, at any `bits` of 12 or more (under 12 the counter is cut and repeats). Always stamp the id with the returned `.timestamp`: `UUID.TB(e.timestamp, e)`.
  * Letting TB read the clock itself (`UUID.TB(undefined, e)`) gives up the no-repeat guarantee
  * whenever the helper's tick differs from the clock: on overflow, with "advance", or after the
  * clock steps back.
@@ -27,10 +27,10 @@ export const COUNTER_BITS: 12;
 export const SEED_BITS: 16;
 /** Width of the random field in bits. */
 export const RANDOM_BITS: 21;
-/** Default length in bits: the 49 entropy bits TA and TB keep (bits 79-127). */
-export const DEFAULT_BITS: number;
+/** Default length in bits: the 49 entropy bits TA and TB keep (bits 79-127), counter + seed + random. */
+export const DEFAULT_BITS: 49;
 /**
- * Entropy bytes for TA / TB: a 16-byte array plus the tick the counter was taken on.
+ * Entropy bytes: a 16-byte array (longer for `bits` past 128) plus the tick the counter was taken on.
  */
 export type EntropyBytes = Uint8Array & {
     timestamp: number;

@@ -51,6 +51,16 @@ describe("entropy() on the browser modules", () => {
 		expect(spy).toHaveBeenCalled();
 	});
 
+	test("a length past crypto.getRandomValues' 65,536-byte limit is drawn in chunks", () => {
+		const spy = vi.spyOn(globalThis.crypto, "getRandomValues");
+		const bits = 8 * 200_000 + 3; // 200,000 bytes plus a partial byte
+		const e = entropy({ seed: "browser", bits });
+		expect(e.length).toBe(Math.ceil(bits / 8));
+		for (const [array] of spy.mock.calls) expect(array.length).toBeLessThanOrEqual(65_536);
+		// the random tail is filled, not left zero: its last 64 KiB are not all zero bytes
+		expect(e.subarray(-65_536).some((byte) => byte !== 0)).toBe(true);
+	});
+
 	test("returns a plain Uint8Array, not a Node Buffer", () => {
 		const e = entropy({ seed: "browser" });
 		expect(e).toBeInstanceOf(Uint8Array);

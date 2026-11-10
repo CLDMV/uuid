@@ -572,5 +572,6 @@ describe("argument validation", () => {
 		expect(() => entropy({ bits: -1 })).toThrow(RangeError);
 		expect(() => entropy({ bits: 1.5 })).toThrow(RangeError);
 		expect(() => entropy({ bits: Infinity })).toThrow(RangeError);
+		expect(() => entropy({ bits: NaN })).toThrow(RangeError);
 	});
 });
