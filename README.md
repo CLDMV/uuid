@@ -263,6 +263,46 @@ const timestamp = uuid.getTimestamp(); // Returns milliseconds
 const date = new Date(timestamp); // Convert to Date
 ```
 
+##### `UUID.entropy([options])`
+
+Builds the `entropy` argument for `UUID.TA()` / `UUID.TB()` from an optional seed. `TA()` and `TB()` don't change; the helper only fills the bytes they read. Two calls in one module instance on the same tick (millisecond by default) never return the same bytes, with or without a seed.
+
+**Parameters:**
+
+- `options.seed` (string|Uint8Array, optional): Its SHA-1 fills the 16 seed bits, so ids made with one seed share them. Without a seed those bits are random. The empty string counts as a seed.
+- `options.precision` (`"ms"`|`"s"`, optional): Tick length for the counter. `"ms"` (default) matches `TB()`. `TA()` stores seconds, so use `"s"` with it: the default `"ms"` would hand `TA()` a millisecond `timestamp`, which it stores as seconds, far in the future.
+- `options.onOverflow` (`"wait"`|`"advance"`, optional): What happens when the counter runs out inside one tick. `"wait"` spins until the clock reaches the next tick; `"advance"` moves to the next tick straight away, ahead of the clock. The default is `"wait"` for `"ms"` and `"advance"` for `"s"`, where a wait could block for up to a second.
+
+**Returns:** a 16-byte `Uint8Array` with bits 79-127 filled and the rest zero, plus a `timestamp` property: the tick the counter was taken on (milliseconds, or seconds with `precision: "s"`).
+
+**Bit layout** (the 49 bits `TA()`/`TB()` keep, bit 79 is the lowest bit of byte 9):
+
+- Bits 79-90: Counter (12 bits). Starts each tick at a random value in 0-2047 and counts up to 4095, so a module instance gets at least 2048 values per tick. As the most significant field, it also makes ids from one instance in one tick sort in the order they were made.
+- Bits 91-106: Seed (16 bits). The first 16 bits of SHA-1 of the seed (UTF-8 for a string, the bytes as given for a `Uint8Array`), or random without a seed.
+- Bits 107-127: Random (21 bits), from the package's secure random source.
+
+**Always stamp the id with the returned `timestamp`:** `UUID.TB(e.timestamp, e)`. The no-repeat guarantee covers the (tick, counter) pair, so it only holds when the id carries the helper's tick. Passing `undefined` lets `TB()` read the clock itself, which gives up the guarantee whenever the two differ: on counter overflow, with `"advance"`, or after the clock steps back.
+
+**Scope of the guarantee:** the counter lives in the module's own state, so it is per module instance and per worker or thread. Between instances, uniqueness rests on chance: two with the same seed that each mint an id on the same tick collide with probability about 2^-32 for that pair (2^-11 for the same counter start, times 2^-21 for the random bits), and about 2^-48 with no seed.
+
+**Clock:** the tick never moves backwards. If the clock goes back, the helper stays on the last tick it used and keeps counting, and on overflow it advances instead of waiting for the clock to catch up (also when the clock steps back during a wait). A wait also gives up after 1,000,000 readings with no change and advances the tick itself, so a frozen `Date.now()` (fake timers in a test suite, for example) can't hang it; the ids stay unique because they are stamped with the returned `timestamp`. In browsers that coarsen `Date.now()` (some fingerprinting protections round it to 16.7 ms or 100 ms), an `"ms"` wait can spin for that long; pass `onOverflow: "advance"` there if blocking matters.
+
+Browser-safe: the helper uses only the package's `rng` and `hash` modules, which switch to Web Crypto and a pure-JS SHA-1 under the `browser` condition.
+
+```javascript
+// TB, milliseconds
+const e = UUID.entropy({ seed: "rummage · main" });
+const id = UUID.TB(e.timestamp, e);
+
+// No seed: the seed bits are random, the counter still prevents repeats
+const r = UUID.entropy();
+const id2 = UUID.TB(r.timestamp, r);
+
+// TA, seconds: precision "s" (overflow advances by default), stamped with the second used
+const s = UUID.entropy({ seed: "rummage · main", precision: "s" });
+const id3 = UUID.TA(s.timestamp, s);
+```
+
 ##### `UUID.IA(issuerID, [entropy])`
 
 **Issuer Variant v1** (Subvariant 01)
