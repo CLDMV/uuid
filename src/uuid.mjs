@@ -292,10 +292,11 @@ class UUID {
 	/**
 	 * Build the `entropy` argument for `UUID.TA()` / `UUID.TB()` from an optional seed.
 	 * Fills the 49 entropy bits TA/TB keep (bits 79-127) with a per-tick counter (12 bits), the first 16 bits of SHA-1(seed) or random bits without a seed, and 21 random bits.
-	 * Two calls in one module instance on the same tick never return the same bytes. Always stamp the id with the returned `.timestamp` (`UUID.TB(e.timestamp, e)`); `UUID.TB(undefined, e)` gives up the no-repeat guarantee on overflow, with "advance", or after the clock steps back.
+	 * Two calls in one module instance on the same tick never return the same bytes, at any `bits` of 12 or more. Always stamp the id with the returned `.timestamp` (`UUID.TB(e.timestamp, e)`); `UUID.TB(undefined, e)` gives up the no-repeat guarantee on overflow, with "advance", or after the clock steps back.
 	 * Use precision "s" with TA, which stores seconds.
-	 * @param {import("./lib/entropy.mjs").EntropyOptions} [options] - Seed, precision ("ms" for TB, "s" for TA) and overflow handling ("wait" by default for "ms", "advance" for "s")
-	 * @returns {import("./lib/entropy.mjs").EntropyBytes} 16-byte array with the tick used as `.timestamp`
+	 * `bits` sets how much entropy is filled, in bits (default 49, the TA/TB layout above): the same fields fill the last `bits` bits, cut where the length runs out. Under 28 bits the seed fingerprint keeps only its top bits, under 12 the counter keeps only its low bits.
+	 * @param {import("./lib/entropy.mjs").EntropyOptions} [options] - Seed, precision ("ms" for TB, "s" for TA), length in bits (default 49) and overflow handling ("wait" by default for "ms", "advance" for "s")
+	 * @returns {import("./lib/entropy.mjs").EntropyBytes} 16-byte array (longer past 128 bits) with the tick used as `.timestamp`
 	 * @example
 	 * const e = UUID.entropy({ seed: "rummage · main" });
 	 * const id = UUID.TB(e.timestamp, e);

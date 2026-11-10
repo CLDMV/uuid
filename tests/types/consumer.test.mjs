@@ -141,6 +141,9 @@ const secondsEntropy = UUID.entropy({ seed: new Uint8Array(4), precision: "s", o
 const taSeeded: UUID = UUID.TA(secondsEntropy.timestamp, secondsEntropy);
 const unseededEntropy = UUID.entropy();
 const unseeded: UUID = UUID.TB(unseededEntropy.timestamp, unseededEntropy);
+const sized = UUID.entropy({ seed: "rummage · main", bits: 64 });
+const sizedBytes: Uint8Array = sized;
+const sizedTick: number = sized.timestamp;
 const viaIssuer: UUID = UUID.createIssuerVariant(ISSUER_CATEGORIES.UNASSIGNED, 1, new Uint8Array(16));
 const instance = new UUID();
 const fromString = new UUID(ta.toString());
@@ -163,7 +166,7 @@ const report = await UUID.validate(ta.toBuffer());
 
 export {
 	same, sameLower, v1, v4, v4Random, v4Buf, v6, v7, v8, v1Node, v3, v5, nil, parsed,
-	text, fromArray, valid, rfcVersion, ta, tb, ia, viaTimestamp, seededTick, seededBytes, tbSeeded, taSeeded, unseeded, viaIssuer, instance, fromString, migrated, migratedFromString, migratedFromBytes, isLegacy, ts, issuerID,
+	text, fromArray, valid, rfcVersion, ta, tb, ia, viaTimestamp, seededTick, seededBytes, tbSeeded, taSeeded, unseeded, sizedBytes, sizedTick, viaIssuer, instance, fromString, migrated, migratedFromString, migratedFromBytes, isLegacy, ts, issuerID,
 	bytes, asString, json, category, available, info, report
 };
 `

@@ -29,7 +29,8 @@
  *
  * The counter starts each tick at a random value in 0-2047 and counts up to 4095, so a
  * process gets at least 2048 values per tick. Within one module instance, two calls on the
- * same tick never get the same counter, so they never return the same bytes. The counter
+ * same tick never get the same counter, so they never return the same bytes (at any length
+ * of 12 bits or more, which holds the whole counter). The counter
  * lives in this module's state: each worker, thread or separately loaded copy of the module
  * has its own. Because the counter is the most significant field, ids minted from one
  * instance in one tick also sort in the order they were made.
@@ -48,6 +49,14 @@
  * Either way, the tick used is on the result as `.timestamp`; stamp the id with it
  * (`UUID.TB(e.timestamp, e)`), since only then does the no-repeat guarantee hold for the id.
  *
+ * The `bits` option sets how much entropy is filled, in bits; the default, 49, is exactly the
+ * layout above. Any length works: the same three fields fill the last `bits` bits of the
+ * array, in the same order, and are cut where the length runs out. With fewer than 28 bits the
+ * seed fingerprint keeps only its top bits (none under 12), and with fewer than 12 the counter
+ * keeps only its low bits, so values repeat inside a tick after 2^bits calls. The array is 16
+ * bytes, or `Math.ceil(bits / 8)` bytes past 128 bits. TA / TB keep only bits 79-127, so pass
+ * them the default.
+ *
  * Browser-safe: the only imports are the package's own `rng` and `hash` subpaths, which pick
  * Web Crypto and the pure-JS SHA-1 under the "browser" condition.
  */
@@ -61,10 +70,14 @@ export const COUNTER_BITS = 12;
 export const SEED_BITS = 16;
 /** Width of the random field in bits. */
 export const RANDOM_BITS = 21;
+/** Default length in bits: the 49 entropy bits TA and TB keep (bits 79-127), counter + seed + random. */
+export const DEFAULT_BITS = 49;
 
 const COUNTER_MAX = 2 ** COUNTER_BITS - 1; // 4095
 const COUNTER_START_RANGE = 2 ** (COUNTER_BITS - 1); // random start in 0-2047
 const EMPTY = new Uint8Array(0);
+// Most bytes asked of the random source in one call: crypto.getRandomValues' per-call limit.
+const RANDOM_CHUNK = 65_536;
 // Readings without progress after which an overflow "wait" gives up on the clock and advances
 // the tick itself. A real clock moves within a few thousand readings; a frozen one (fake
 // timers) never does.
@@ -84,7 +97,7 @@ let cachedSeed = null;
 let cachedSeedBits = 0;
 
 /**
- * Entropy bytes for TA / TB: a 16-byte array plus the tick the counter was taken on.
+ * Entropy bytes: a 16-byte array (longer for `bits` past 128) plus the tick the counter was taken on.
  * @typedef {Uint8Array & { timestamp: number }} EntropyBytes
  */
 
@@ -93,6 +106,7 @@ let cachedSeedBits = 0;
  * @typedef {object} EntropyOptions
  * @property {string|Uint8Array|null} [seed] - Value whose SHA-1 fills the 16 seed bits; omitted or null fills them with random bits
  * @property {"ms"|"s"} [precision] - Tick length for the counter: "ms" for TB (default), "s" for TA
+ * @property {number} [bits] - How many bits of entropy to fill, counted in bits (default 49, what TA/TB keep). The entropy fills the last `bits` bits of the array, which is 16 bytes, or `Math.ceil(bits / 8)` bytes for more than 128 bits. Fields are filled in order (12-bit counter, 16-bit seed fingerprint, random bits) and cut where the length runs out: under 28 bits the fingerprint keeps only its top bits, under 12 the counter keeps only its low bits
  * @property {"wait"|"advance"} [onOverflow] - When the counter runs out inside a tick: "wait" spins until the clock reaches the next tick (default for "ms"; it advances instead if the clock steps back or stays frozen for 1,000,000 readings), "advance" moves to the next tick without waiting (default for "s")
  */
 
@@ -139,6 +153,22 @@ function startTick(clock, tick) {
 }
 
 /**
+ * Write `width` bits of `value` (at most 16) into `out` at bit `pos`, most significant first,
+ * with masks and shifts only. `out` must be zero there.
+ * @param {Uint8Array} out - Target bytes
+ * @param {number} pos - Bit offset of the first bit, counted from the start of the array
+ * @param {number} value - Field value; only its low `width` bits are written
+ * @param {number} width - Field width in bits
+ */
+function writeBits(out, pos, value, width) {
+	for (let i = 0; i < width; i++) {
+		const bit = (value >> (width - 1 - i)) & 0x01;
+		const at = pos + i;
+		out[at >> 3] |= bit << (7 - (at & 0x07));
+	}
+}
+
+/**
  * Take the next (tick, counter) pair from a clock, handling overflow.
  * @param {"ms"|"s"} precision - Tick length
  * @param {"wait"|"advance"} onOverflow - Overflow handling
@@ -173,16 +203,19 @@ function nextSlot(precision, onOverflow) {
  * Build the `entropy` argument for `UUID.TA()` / `UUID.TB()`.
  *
  * Two calls in one module instance on the same tick never return the same bytes, with or
- * without a seed. Always stamp the id with the returned `.timestamp`: `UUID.TB(e.timestamp, e)`.
+ * without a seed, at any `bits` of 12 or more (under 12 the counter is cut and repeats). Always stamp the id with the returned `.timestamp`: `UUID.TB(e.timestamp, e)`.
  * Letting TB read the clock itself (`UUID.TB(undefined, e)`) gives up the no-repeat guarantee
  * whenever the helper's tick differs from the clock: on overflow, with "advance", or after the
  * clock steps back.
  *
  * @param {EntropyOptions} [options] - Seed, precision and overflow handling
- * @returns {EntropyBytes} 16-byte array (bits 79-127 filled, the rest zero) with the tick used as `.timestamp`
+ * @returns {EntropyBytes} 16-byte array (bits 79-127 filled by default, the rest zero; with `bits`, the last `bits` bits, and longer than 16 bytes past 128 bits) with the tick used as `.timestamp`
  * @example
  * const e = entropy({ seed: "rummage · main" });
  * const id = UUID.TB(e.timestamp, e);
+ * @example
+ * // 64 bits of seeded entropy, in the last 8 bytes of a 16-byte array
+ * const e = entropy({ seed: "rummage · main", bits: 64 });
  * @example
  * // TA stores seconds: use precision "s" (the default "ms" would stamp TA with milliseconds)
  * const e = entropy({ seed: "rummage · main", precision: "s" });
@@ -192,7 +225,7 @@ export function entropy(options = {}) {
 	if (options === null || typeof options !== "object") {
 		throw new TypeError("entropy() options must be an object");
 	}
-	const { seed = null, precision = "ms" } = options;
+	const { seed = null, precision = "ms", bits = DEFAULT_BITS } = options;
 	const { onOverflow = precision === "s" ? "advance" : "wait" } = options;
 	if (seed !== null && typeof seed !== "string" && !(seed instanceof Uint8Array)) {
 		throw new TypeError("entropy() seed must be a string or a Uint8Array");
@@ -203,23 +236,49 @@ export function entropy(options = {}) {
 	if (onOverflow !== "wait" && onOverflow !== "advance") {
 		throw new RangeError(`entropy() onOverflow must be "wait" or "advance", got ${JSON.stringify(onOverflow)}`);
 	}
+	if (typeof bits !== "number") {
+		throw new TypeError("entropy() bits must be a number");
+	}
+	if (!Number.isSafeInteger(bits) || bits < 0) {
+		throw new RangeError(`entropy() bits must be a whole number of bits, 0 or more, got ${bits}`);
+	}
 
 	const { tick, counter } = nextSlot(precision, onOverflow);
 
-	// r[0] low 5 bits + r[1] + r[2]: the 21 random bits; r[3], r[4]: the seed bits without a seed.
-	const r = randomBytes(5);
-	const seedField = seed === null ? (r[3] << 8) | r[4] : seedBits(seed);
+	const out = /** @type {EntropyBytes} */ (new Uint8Array(Math.max(16, Math.ceil(bits / 8))));
+	const total = out.length * 8;
 
-	// Pack counter (12) | seed (16) | random (21) into bit 79 and bytes 10-15, most
-	// significant first, with masks and shifts only.
-	const out = /** @type {EntropyBytes} */ (new Uint8Array(16));
-	out[9] = (counter >> 11) & 0x01; // counter bit 11, at bit 79 (the lowest bit of byte 9)
-	out[10] = (counter >> 3) & 0xff; // counter bits 10-3
-	out[11] = ((counter & 0x07) << 5) | ((seedField >> 11) & 0x1f); // counter bits 2-0, seed bits 15-11
-	out[12] = (seedField >> 3) & 0xff; // seed bits 10-3
-	out[13] = ((seedField & 0x07) << 5) | (r[0] & 0x1f); // seed bits 2-0, random bits 20-16
-	out[14] = r[1]; // random bits 15-8
-	out[15] = r[2]; // random bits 7-0
+	// Field widths, most significant first: as much of the counter as fits, then as much of
+	// the seed fingerprint as fits, then random bits for the rest.
+	const counterWidth = Math.min(COUNTER_BITS, bits);
+	const seedWidth = Math.min(SEED_BITS, bits - counterWidth);
+	const randomWidth = bits - counterWidth - seedWidth;
+	let pos = total - bits;
+
+	// A counter cut short keeps its low bits, the ones that change from call to call.
+	writeBits(out, pos, counter & ((1 << counterWidth) - 1), counterWidth);
+	pos += counterWidth;
+
+	if (seedWidth > 0) {
+		const r = seed === null ? randomBytes(2) : null;
+		const seedField = r === null ? seedBits(seed) : (r[0] << 8) | r[1];
+		// A seed field cut short keeps the fingerprint's top bits.
+		writeBits(out, pos, seedField >> (SEED_BITS - seedWidth), seedWidth);
+	}
+
+	if (randomWidth > 0) {
+		// The random field runs to the end of the array: a partial byte (its low bits), then
+		// whole bytes copied straight from the generator, in chunks the browser's
+		// crypto.getRandomValues accepts (it throws above 65,536 bytes per call).
+		const partial = randomWidth & 0x07;
+		const whole = randomWidth >> 3;
+		if (partial > 0) {
+			out[out.length - whole - 1] |= randomBytes(1)[0] & ((1 << partial) - 1);
+		}
+		for (let at = out.length - whole; at < out.length; at += RANDOM_CHUNK) {
+			out.set(randomBytes(Math.min(RANDOM_CHUNK, out.length - at)), at);
+		}
+	}
 	out.timestamp = tick;
 	return out;
 }
