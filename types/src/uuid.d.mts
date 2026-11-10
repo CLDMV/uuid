@@ -138,6 +138,22 @@ export class UUID {
      */
     static TB(timestamp?: number | Date | null, entropy?: Uint8Array | null): UUID;
     /**
+     * Build the `entropy` argument for `UUID.TA()` / `UUID.TB()` from an optional seed.
+     * Fills the 49 entropy bits TA/TB keep (bits 79-127) with a per-tick counter (12 bits), the first 16 bits of SHA-1(seed) or random bits without a seed, and 21 random bits.
+     * Two calls in one module instance on the same tick never return the same bytes, at any `bits` of 12 or more. Always stamp the id with the returned `.timestamp` (`UUID.TB(e.timestamp, e)`); `UUID.TB(undefined, e)` gives up the no-repeat guarantee on overflow, with "advance", or after the clock steps back.
+     * Use precision "s" with TA, which stores seconds.
+     * `bits` sets how much entropy is filled, in bits (default 49, the TA/TB layout above): the same fields fill the last `bits` bits, cut where the length runs out. Under 28 bits the seed fingerprint keeps only its top bits, under 12 the counter keeps only its low bits.
+     * @param {import("./lib/entropy.mjs").EntropyOptions} [options] - Seed, precision ("ms" for TB, "s" for TA), length in bits (default 49) and overflow handling ("wait" by default for "ms", "advance" for "s")
+     * @returns {import("./lib/entropy.mjs").EntropyBytes} 16-byte array (longer past 128 bits) with the tick used as `.timestamp`
+     * @example
+     * const e = UUID.entropy({ seed: "rummage · main" });
+     * const id = UUID.TB(e.timestamp, e);
+     * @example
+     * const s = UUID.entropy({ seed: "rummage · main", precision: "s" });
+     * const id = UUID.TA(s.timestamp, s);
+     */
+    static entropy(options?: import("./lib/entropy.mjs").EntropyOptions): import("./lib/entropy.mjs").EntropyBytes;
+    /**
      * Rewrite a legacy timestamp id (version 1 or 2) into the ordered layout (version 3 or 4)
      * The sign, the timestamp value and the 49 entropy bits (bits 79-127) are carried over unchanged, so the mapping is deterministic: the same legacy id always migrates to the same new id. Ids already at version 3 or 4, and every non-timestamp UUID, come back as an equal copy. Throws only when the input cannot be parsed.
      * @param {UUID|string|Uint8Array} input - A UUID instance, a UUID string, or a 16-byte buffer

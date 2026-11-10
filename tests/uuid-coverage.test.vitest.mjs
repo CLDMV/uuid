@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-02T21:25:23-08:00 (1793683523)
+ *	@Last modified time: 2026-11-07T21:23:43-08:00 (1794115423)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -20,7 +20,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { UUID } from "../src/uuid.mjs";
+import { UUID } from "@cldmv/uuid";
 import { BitUtils } from "../src/lib/bit-utils.mjs";
 
 describe("UUID branch and alias coverage", () => {

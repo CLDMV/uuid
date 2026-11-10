@@ -14,19 +14,18 @@ The custom variants (`TA`, `TB`, `IA`) live in the variant `111` namespace, so t
 
 ## ✨ What's New
 
-### Latest: v1.4.0 (November 2026)
+### Latest: v1.5.0 (November 2026)
 
-- **Timestamp ids sort by byte order**: `UUID.TA()` and `UUID.TB()` wrote the timestamp's low 32 bits ahead of its upper 31, so byte order followed time only inside one 2^32 window and reversed at every boundary (every 49.7 days for `TB`). Timestamp versions 3 (seconds) and 4 (milliseconds) carry the ordered layout and are what `TA()` and `TB()` mint now; versions 1 and 2 still decode to the same timestamps, so stored ids keep working ([#90](https://github.com/CLDMV/uuid/pull/90), fixes [#89](https://github.com/CLDMV/uuid/issues/89)).
-- **`UUID.migrate()`**: rewrites a stored legacy id to the ordered layout with the same timestamp and entropy bits, deterministically and idempotently; `isLegacyTimestampLayout()` selects the rows to migrate. Old and new ids interleave in byte order until every row is rewritten ([#90](https://github.com/CLDMV/uuid/pull/90)).
-- **Dev tooling**: lint and format scripts from `@cldmv/configs`, with the fleet pre-commit hook; thirteen lint errors and two files of formatting drift fixed, no behaviour change ([#96](https://github.com/CLDMV/uuid/pull/96)).
-- [View full v1.4.0 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.4.0.md)
+- **`UUID.entropy()`**: builds the `entropy` argument for `UUID.TA()` / `UUID.TB()` from an optional seed. A per-tick counter, a 16-bit fingerprint of the seed and random bits fill the 49 entropy bits (or any length you ask for with `bits`), so two ids minted by one module instance on the same tick never repeat (at any length of 12 bits or more); stamp the id with the returned `timestamp` (`UUID.TB(e.timestamp, e)`). `TA()` and `TB()` don't change ([#103](https://github.com/CLDMV/uuid/pull/103), fixes [#102](https://github.com/CLDMV/uuid/issues/102)).
+- **Tests run against the build**: `npm run test:dist` runs the Vitest suites against `dist/`, and `npm test` and CI include it ([#98](https://github.com/CLDMV/uuid/pull/98)).
+- [View full v1.5.0 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.5.0.md)
 
 ### Recent Releases
 
+- **v1.4.0** (November 2026): `TA()`/`TB()` ids sort by byte order through timestamp versions 3 and 4, and `UUID.migrate()` rewrites stored legacy ids ([#90](https://github.com/CLDMV/uuid/pull/90), fixes [#89](https://github.com/CLDMV/uuid/issues/89)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.4.0.md))
 - **v1.3.2** (November 2026): tooling only, tests resolve `src/` through `devCondition()` and CI runs `types:check`, no library change ([#91](https://github.com/CLDMV/uuid/pull/91), [#93](https://github.com/CLDMV/uuid/pull/93)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.2.md))
 - **v1.3.1** (November 2026): `engines.node` is the runtime floor again (`>=16.12.0`); the 22.22.0 toolchain floor moves to `devEngines` ([#85](https://github.com/CLDMV/uuid/pull/85)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.1.md))
 - **v1.3.0** (November 2026): built from `src/` with tsup into `dist/`, `@cldmv/uuid/main` becomes a deprecated alias of the root, and `engines.node` went to `>=22.22.0` ([#78](https://github.com/CLDMV/uuid/issues/78), [#80](https://github.com/CLDMV/uuid/pull/80)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.0.md))
-- **v1.2.6** (October 2026): test toolchain update, `vitest` 5.0.3 and `@cldmv/vitest-runner` 1.5.3, dev-only, no runtime change ([#61](https://github.com/CLDMV/uuid/pull/61), [#64](https://github.com/CLDMV/uuid/pull/64)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.2.6.md))
 
 📚 **For complete version history and detailed release notes, see the [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/) folder.**
 
@@ -261,6 +260,59 @@ const uuid3 = UUID.TB(-315619200000); // January 1, 1960
 // Extract timestamp
 const timestamp = uuid.getTimestamp(); // Returns milliseconds
 const date = new Date(timestamp); // Convert to Date
+```
+
+##### `UUID.entropy([options])`
+
+Builds the `entropy` argument for `UUID.TA()` / `UUID.TB()` from an optional seed. `TA()` and `TB()` don't change; the helper only fills the bytes they read. Two calls in one module instance on the same tick (millisecond by default) never return the same bytes, with or without a seed, at any `bits` of 12 or more.
+
+**Parameters:**
+
+- `options.seed` (string|Uint8Array, optional): Its SHA-1 fills the 16 seed bits, so ids made with one seed share them. Without a seed those bits are random. The empty string counts as a seed.
+- `options.precision` (`"ms"`|`"s"`, optional): Tick length for the counter. `"ms"` (default) matches `TB()`. `TA()` stores seconds, so use `"s"` with it: the default `"ms"` would hand `TA()` a millisecond `timestamp`, which it stores as seconds, far in the future.
+- `options.bits` (number, optional): How much entropy to fill, in bits. The default, 49, is exactly what `TA()` / `TB()` keep and gives the layout below. Any whole number of 0 or more works, limited only by memory (the array has to be allocated, so a length like `2 ** 53 - 1` fails); see **Length** below.
+- `options.onOverflow` (`"wait"`|`"advance"`, optional): What happens when the counter runs out inside one tick. `"wait"` spins until the clock reaches the next tick; `"advance"` moves to the next tick straight away, ahead of the clock. The default is `"wait"` for `"ms"` and `"advance"` for `"s"`, where a wait could block for up to a second.
+
+**Returns:** a 16-byte `Uint8Array` with bits 79-127 filled and the rest zero (with `bits`, the last `bits` bits are filled, and the array is `Math.ceil(bits / 8)` bytes once that is more than 16), plus a `timestamp` property: the tick the counter was taken on (milliseconds, or seconds with `precision: "s"`).
+
+**Bit layout** (the 49 bits `TA()`/`TB()` keep, bit 79 is the lowest bit of byte 9):
+
+- Bits 79-90: Counter (12 bits). Starts each tick at a random value in 0-2047 and counts up to 4095, so a module instance gets at least 2048 values per tick. As the most significant field, it also makes ids from one instance in one tick sort in the order they were made.
+- Bits 91-106: Seed (16 bits). The first 16 bits of SHA-1 of the seed (UTF-8 for a string, the bytes as given for a `Uint8Array`), or random without a seed.
+- Bits 107-127: Random (21 bits), from the package's secure random source.
+
+**Length:** `bits` changes how much is filled, not what goes in it. The same three fields, in the same order, fill the last `bits` bits of the array: the 12-bit counter, the 16-bit seed fingerprint, then random bits for whatever is left. A length longer than 49 gets more random bits. A short length cuts the fields where it runs out:
+
+- 28 bits: the counter and the full seed fingerprint, no random bits.
+- 12 to 27 bits: the counter and only the top bits of the fingerprint (none at 12), so different seeds can share them.
+- Under 12 bits: only the counter's low bits, so values repeat inside one tick after 2^`bits` calls. At 0 the array is all zero.
+
+`TA()` and `TB()` keep only bits 79-127, so pass them the default; other lengths are for using the entropy yourself.
+
+**Always stamp the id with the returned `timestamp`:** `UUID.TB(e.timestamp, e)`. The no-repeat guarantee covers the (tick, counter) pair, so it only holds when the id carries the helper's tick. Passing `undefined` lets `TB()` read the clock itself, which gives up the guarantee whenever the two differ: on counter overflow, with `"advance"`, or after the clock steps back.
+
+**Scope of the guarantee:** the counter lives in the module's own state, so it is per module instance and per worker or thread. Between instances, uniqueness rests on chance: at the default length, two with the same seed that each mint an id on the same tick collide with probability about 2^-32 for that pair (2^-11 for the same counter start, times 2^-21 for the random bits), and about 2^-48 with no seed.
+
+**Clock:** the tick never moves backwards. If the clock goes back, the helper stays on the last tick it used and keeps counting, and on overflow it advances instead of waiting for the clock to catch up (also when the clock steps back during a wait). A wait also gives up after 1,000,000 readings with no change and advances the tick itself, so a frozen `Date.now()` (fake timers in a test suite, for example) can't hang it; the ids stay unique because they are stamped with the returned `timestamp`. In browsers that coarsen `Date.now()` (some fingerprinting protections round it to 16.7 ms or 100 ms), an `"ms"` wait can spin for that long; pass `onOverflow: "advance"` there if blocking matters.
+
+Browser-safe: the helper uses only the package's `rng` and `hash` modules, which switch to Web Crypto and a pure-JS SHA-1 under the `browser` condition.
+
+```javascript
+// TB, milliseconds
+const e = UUID.entropy({ seed: "rummage · main" });
+const id = UUID.TB(e.timestamp, e);
+
+// No seed: the seed bits are random, the counter still prevents repeats
+const r = UUID.entropy();
+const id2 = UUID.TB(r.timestamp, r);
+
+// TA, seconds: precision "s" (overflow advances by default), stamped with the second used
+const s = UUID.entropy({ seed: "rummage · main", precision: "s" });
+const id3 = UUID.TA(s.timestamp, s);
+
+// 64 bits of seeded entropy for your own use: counter, seed fingerprint, 36 random bits
+const k = UUID.entropy({ seed: "rummage · main", bits: 64 });
+const key = k.subarray(8); // the last 8 bytes
 ```
 
 ##### `UUID.IA(issuerID, [entropy])`
@@ -1063,9 +1115,10 @@ The test suites run against `src/` through this condition.
 ### Running Tests
 
 ```bash
-npm test                 # Run all tests (Vitest suites, then the entry and type tests)
+npm test                 # Run all tests (Vitest suites on src/, the entry tests, the suites on dist/, then the type tests)
 npm run test:watch       # Watch mode
 npm run test:cjs         # Build, then check the dist/ and src/ entries (Node's built-in test runner)
+npm run test:dist        # Build, then run the Vitest suites against dist/ instead of src/
 npm run test:types       # Build, then type-check a packed consumer project
 npm run coverage         # With coverage
 ```

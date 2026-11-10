@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-02T21:25:22-08:00 (1793683522)
+ *	@Last modified time: 2026-11-09T04:45:36-08:00 (1794228336)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -132,6 +132,18 @@ const ta: UUID = UUID.TA();
 const tb: UUID = UUID.TB(new Date());
 const ia: UUID = UUID.IA(ISSUER_CATEGORIES.SPEC_ORIGINATOR);
 const viaTimestamp: UUID = UUID.createTimestampVariant(undefined, 2);
+// Entropy builder: a Uint8Array carrying the tick it used, accepted by TA/TB.
+const seeded = UUID.entropy({ seed: "rummage · main" });
+const seededTick: number = seeded.timestamp;
+const seededBytes: Uint8Array = seeded;
+const tbSeeded: UUID = UUID.TB(seeded.timestamp, seeded);
+const secondsEntropy = UUID.entropy({ seed: new Uint8Array(4), precision: "s", onOverflow: "advance" });
+const taSeeded: UUID = UUID.TA(secondsEntropy.timestamp, secondsEntropy);
+const unseededEntropy = UUID.entropy();
+const unseeded: UUID = UUID.TB(unseededEntropy.timestamp, unseededEntropy);
+const sized = UUID.entropy({ seed: "rummage · main", bits: 64 });
+const sizedBytes: Uint8Array = sized;
+const sizedTick: number = sized.timestamp;
 const viaIssuer: UUID = UUID.createIssuerVariant(ISSUER_CATEGORIES.UNASSIGNED, 1, new Uint8Array(16));
 const instance = new UUID();
 const fromString = new UUID(ta.toString());
@@ -154,7 +166,7 @@ const report = await UUID.validate(ta.toBuffer());
 
 export {
 	same, sameLower, v1, v4, v4Random, v4Buf, v6, v7, v8, v1Node, v3, v5, nil, parsed,
-	text, fromArray, valid, rfcVersion, ta, tb, ia, viaTimestamp, viaIssuer, instance, fromString, migrated, migratedFromString, migratedFromBytes, isLegacy, ts, issuerID,
+	text, fromArray, valid, rfcVersion, ta, tb, ia, viaTimestamp, seededTick, seededBytes, tbSeeded, taSeeded, unseeded, sizedBytes, sizedTick, viaIssuer, instance, fromString, migrated, migratedFromString, migratedFromBytes, isLegacy, ts, issuerID,
 	bytes, asString, json, category, available, info, report
 };
 `
