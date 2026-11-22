@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-02T21:25:22-08:00 (1793683522)
+ *	@Last modified time: 2026-11-21T12:52:12-08:00 (1795294332)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -32,11 +32,12 @@
 
 import crypto from "crypto";
 import { BitUtils } from "../../bit-utils.mjs";
+import { toTimestampBigInt, toTimestampNumber, writeTimestamp, readTimestamp } from "../../timestamp.mjs";
 import { VARIANT_BITS, SUBVARIANT_TIMESTAMP, VERSION_START_BIT, VERSION_BIT_COUNT } from "../../constants.mjs";
 
 /**
  * Create a Timestamp Variant v2 UUID (milliseconds precision)
- * @param {number|Date|null} timestamp - Timestamp value (optional, defaults to current time in milliseconds)
+ * @param {number|bigint|string|Date|null} timestamp - Timestamp value (optional, defaults to current time in milliseconds)
  * @param {Buffer|null} entropy - Optional entropy for bits 79-127
  * @returns {Buffer} 16-byte UUID buffer
  */
@@ -45,14 +46,7 @@ export function v2(timestamp = null, entropy = null) {
 	const version = 2;
 
 	// Use current time if timestamp not provided (milliseconds precision)
-	let timestampValue;
-	if (timestamp === undefined || timestamp === null) {
-		timestampValue = Date.now(); // milliseconds
-	} else if (timestamp instanceof Date) {
-		timestampValue = timestamp.getTime(); // milliseconds
-	} else {
-		timestampValue = timestamp;
-	}
+	const timestampValue = toTimestampBigInt(timestamp === undefined || timestamp === null ? Date.now() : timestamp, "ms");
 
 	// Set variant (bits 64-66) = 111
 	BitUtils.setBits(buffer, 64, 3, VARIANT_BITS);
@@ -84,86 +78,16 @@ export function v2(timestamp = null, entropy = null) {
 	BitUtils.setBits(buffer, VERSION_START_BIT, VERSION_BIT_COUNT, version);
 
 	// Set timestamp AFTER entropy to ensure timestamp bits are not overwritten
-	setTimestamp(buffer, timestampValue);
+	writeTimestamp(buffer, timestampValue, "legacy");
 
 	return buffer;
 }
 
 /**
- * Set 70-bit timestamp according to specification
- * @param {Buffer} buffer - UUID buffer
- * @param {number} timestampValue - Timestamp value in milliseconds
- * @private
- */
-function setTimestamp(buffer, timestampValue) {
-	// Handle sign bit (bit 0)
-	const isNegative = timestampValue < 0;
-	const absTimestamp = Math.abs(timestampValue);
-
-	// Set sign bit: 0 = negative, 1 = positive
-	BitUtils.setBits(buffer, 0, 1, isNegative ? 0 : 1);
-
-	// Convert absolute timestamp to BigInt
-	const absTimestampBig = BigInt(Math.floor(absTimestamp));
-
-	// Apply negative timestamp ordering rule for storage
-	// If negative: stored = (2^69 - 1) - abs(magnitude)
-	// If positive: store magnitude directly
-	let storedMagnitude;
-	if (isNegative) {
-		const maxValue = (BigInt(1) << BigInt(69)) - BigInt(1); // 2^69 - 1
-		storedMagnitude = maxValue - absTimestampBig;
-	} else {
-		storedMagnitude = absTimestampBig;
-	}
-
-	// Split the stored magnitude into components
-	// Set lower 32 bits (bits 1-32)
-	const lower32 = Number(storedMagnitude & BigInt(0xffffffff));
-	BitUtils.setBits(buffer, 1, 32, lower32);
-
-	// Set middle 31 bits (bits 33-63)
-	const middle31 = Number((storedMagnitude >> BigInt(32)) & BigInt(0x7fffffff));
-	BitUtils.setBits(buffer, 33, 31, middle31);
-
-	// Set upper 6 bits (bits 69-74)
-	const upper6 = Number((storedMagnitude >> BigInt(63)) & BigInt(0x3f));
-	BitUtils.setBits(buffer, 69, 6, upper6);
-}
-
-/**
  * Parse timestamp from a Timestamp v2 UUID buffer
  * @param {Buffer} buffer - UUID buffer
- * @returns {number} Timestamp value in milliseconds
+ * @returns {number|bigint} Timestamp value in milliseconds: a number while it is a safe integer, an exact bigint past ±(2^53 - 1)
  */
 export function parseTimestamp(buffer) {
-	// Extract sign bit (bit 0)
-	const signBit = BitUtils.getBitsAsNumber(buffer, 0, 1);
-	const isPositive = signBit === 1;
-
-	// Extract timestamp magnitude from the 69 bits
-	// Get lower 32 bits (bits 1-32)
-	const lower32 = BigInt(BitUtils.getBitsAsNumber(buffer, 1, 32));
-
-	// Get middle 31 bits (bits 33-63)
-	const middle31 = BigInt(BitUtils.getBitsAsNumber(buffer, 33, 31));
-
-	// Get upper 6 bits (bits 69-74)
-	const upper6 = BigInt(BitUtils.getBitsAsNumber(buffer, 69, 6));
-
-	// Reconstruct the stored 69-bit magnitude
-	const storedMagnitude = lower32 | (middle31 << BigInt(32)) | (upper6 << BigInt(63));
-
-	// Apply negative timestamp ordering rule
-	let timestamp;
-	if (isPositive) {
-		timestamp = Number(storedMagnitude);
-	} else {
-		// Negative timestamp: decode using ordering rule
-		const maxValue = (BigInt(1) << BigInt(69)) - BigInt(1); // 2^69 - 1
-		const absMagnitude = maxValue - storedMagnitude;
-		timestamp = -Number(absMagnitude);
-	}
-
-	return timestamp;
+	return toTimestampNumber(readTimestamp(buffer, "legacy"));
 }

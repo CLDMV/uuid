@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:39-07:00 (1790980419)
+ *	@Last modified time: 2026-11-21T12:52:14-08:00 (1795294334)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -217,7 +217,7 @@ describe("UUIDValidator", () => {
 		expect(result.fields.reservedBit69).toBe(0);
 	});
 
-	test("should warn about reserved bit violations", () => {
+	test("bit 69 is part of the timestamp, so setting it is no warning", () => {
 		const buffer = Buffer.alloc(16, 0);
 		BitUtils.setBits(buffer, 64, 3, VARIANT_BITS);
 		BitUtils.setBits(buffer, 67, 2, SUBVARIANT_TIMESTAMP);
@@ -225,7 +225,17 @@ describe("UUIDValidator", () => {
 		BitUtils.setBits(buffer, 75, 4, 1);
 
 		const result = UUIDValidator.validateCompleteUUID(buffer);
-		expect(result.warnings.some((warning) => warning.includes("Reserved bit 69"))).toBeTruthy();
+		expect(result.fields.reservedBit69).toBe(1);
+		expect(result.warnings.some((warning) => warning.includes("Reserved bit 69"))).toBe(false);
+	});
+
+	test("pre-1970 and far-future timestamps validate without warnings", () => {
+		for (const timestamp of [-1, -1700000000000, 2n ** 68n, -(2n ** 69n - 1n)]) {
+			const result = UUIDValidator.validateCompleteUUID(UUID.TB(timestamp).toBuffer());
+			expect(result.isValid).toBe(true);
+			expect(result.warnings).toEqual([]);
+			expect(result.fields.actualTimestamp).toBe(BigInt(timestamp));
+		}
 	});
 
 	test("should generate complete validation report", () => {

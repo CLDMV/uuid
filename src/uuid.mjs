@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-09T04:45:36-08:00 (1794228336)
+ *	@Last modified time: 2026-11-21T12:52:13-08:00 (1795294333)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -30,6 +30,14 @@ import { randomBytes } from "@cldmv/uuid/rng";
 import { toHex, fromHex, toBufferLike } from "@cldmv/uuid/bytes";
 import { BitUtils } from "./lib/bit-utils.mjs";
 import {
+	toTimestampBigInt,
+	toTimestampNumber,
+	writeTimestamp,
+	readTimestamp,
+	writeStoredMagnitude,
+	readStoredMagnitude
+} from "./lib/timestamp.mjs";
+import {
 	VARIANT_BITS,
 	SUBVARIANT_TIMESTAMP,
 	SUBVARIANT_ISSUER,
@@ -42,7 +50,7 @@ import {
 	ISSUER_ID_MASK,
 	ISSUER_CATEGORIES,
 	isSecondsVersion,
-	isOrderedVersion
+	timestampLayout
 } from "./lib/constants.mjs";
 import * as rfcUuids from "./lib/versions/rfc/index.mjs";
 import { entropy as buildEntropy } from "./lib/entropy.mjs";
@@ -165,9 +173,9 @@ class UUID {
 
 	/**
 	 * Create a new Timestamp Variant UUID
-	 * Versions 1 and 3 store seconds, versions 2 and 4 store milliseconds. Versions 3 and 4 lay the magnitude out most significant bit first (byte order is chronological); versions 1 and 2 keep the legacy low-word-first layout.
-	 * @param {number|Date|null|undefined} timestamp - Timestamp value (null/undefined defaults to the current time)
-	 * @param {number} version - Version number (1 or 3 for seconds, 2 or 4 for milliseconds)
+	 * Versions 1, 3 and 5 store seconds; versions 2, 4 and 6 store milliseconds. Versions 5 and 6 (what TA and TB mint) lay the whole magnitude out most significant bit first, so byte order follows time across the full ±(2^69 - 1). Versions 3 and 4 (ordered layout) follow time within ±(2^63 - 1); versions 1 and 2 keep the legacy low-word-first layout.
+	 * @param {number|bigint|string|Date|null|undefined} timestamp - Timestamp value (null/undefined defaults to the current time)
+	 * @param {number} version - Version number (5, 3 or 1 for seconds; 6, 4 or 2 for milliseconds)
 	 * @param {Uint8Array|null} [entropy] - Optional entropy for bits 79-127
 	 * @returns {UUID} New UUID instance
 	 */
@@ -175,7 +183,7 @@ class UUID {
 		const uuid = new UUID();
 
 		// Use current time if timestamp not provided
-		// Versions 1 and 3: seconds, versions 2 and 4: milliseconds
+		// Versions 1, 3 and 5: seconds; versions 2, 4 and 6: milliseconds
 		const seconds = isSecondsVersion(version);
 		if (timestamp === undefined || timestamp === null) {
 			if (seconds) {
@@ -185,18 +193,8 @@ class UUID {
 			}
 		}
 
-		// Convert Date objects to appropriate timestamp value
-		let timestampValue;
-		if (timestamp instanceof Date) {
-			if (seconds) {
-				timestampValue = Math.floor(timestamp.getTime() / 1000); // seconds
-			} else {
-				timestampValue = timestamp.getTime(); // milliseconds
-			}
-		} else {
-			// Use the timestamp as provided by user in the correct unit
-			timestampValue = timestamp;
-		}
+		// Validate and convert to an exact bigint in the stored unit (a Date becomes seconds or milliseconds)
+		const timestampValue = toTimestampBigInt(timestamp, seconds ? "s" : "ms");
 
 		// Set variant (bits 64-66) = 111
 		uuid._setVariant(VARIANT_BITS);
@@ -229,7 +227,7 @@ class UUID {
 
 		// Set timestamp AFTER entropy to ensure timestamp bits are not overwritten
 		// Timestamp occupies bits 0-63 and 69-74 (70 bits total: 1 sign + 69 magnitude)
-		uuid._setTimestamp(timestampValue, isOrderedVersion(version));
+		uuid._setTimestamp(timestampValue, timestampLayout(version));
 
 		return uuid;
 	}
@@ -247,8 +245,8 @@ class UUID {
 
 	/**
 	 * Create a timestamp-based UUID (short name alias)
-	 * @param {number|Date|null|undefined} timestamp - Timestamp value (null/undefined defaults to the current time)
-	 * @param {number} version - Version number (1 or 3 for seconds, 2 or 4 for milliseconds)
+	 * @param {number|bigint|string|Date|null|undefined} timestamp - Timestamp value (null/undefined defaults to the current time)
+	 * @param {number} version - Version number (5, 3 or 1 for seconds; 6, 4 or 2 for milliseconds)
 	 * @param {Uint8Array|null} [entropy] - Optional entropy for bits 79-127
 	 * @returns {UUID} New UUID instance
 	 */
@@ -258,13 +256,13 @@ class UUID {
 
 	/**
 	 * Create a Timestamp Variant UUID in seconds (ultra-short alias)
-	 * Subvariant 00 - Timestamp-based identification (seconds precision). Mints version 3, the ordered layout; version 1 (legacy layout) is still decoded.
-	 * @param {number|Date|null} [timestamp] - Timestamp value (optional, defaults to the current time)
+	 * Subvariant 00 - Timestamp-based identification (seconds precision). Mints version 5, the full layout; versions 1 and 3 (older layouts) are still decoded.
+	 * @param {number|bigint|string|Date|null} [timestamp] - Timestamp value (optional, defaults to the current time)
 	 * @param {Uint8Array|null} [entropy] - Optional entropy for bits 79-127
 	 * @returns {UUID} New UUID instance
 	 */
 	static TA(timestamp, entropy = null) {
-		return UUID.createTimestampVariant(timestamp, 3, entropy);
+		return UUID.createTimestampVariant(timestamp, 5, entropy);
 	}
 
 	/**
@@ -280,13 +278,13 @@ class UUID {
 
 	/**
 	 * Create a Timestamp Variant UUID in milliseconds (ultra-short alias)
-	 * Subvariant 00 - Timestamp-based identification (milliseconds precision). Mints version 4, the ordered layout; version 2 (legacy layout) is still decoded.
-	 * @param {number|Date|null} [timestamp] - Timestamp value (optional, defaults to the current time)
+	 * Subvariant 00 - Timestamp-based identification (milliseconds precision). Mints version 6, the full layout; versions 2 and 4 (older layouts) are still decoded.
+	 * @param {number|bigint|string|Date|null} [timestamp] - Timestamp value (optional, defaults to the current time)
 	 * @param {Uint8Array|null} [entropy] - Optional entropy for bits 79-127
 	 * @returns {UUID} New UUID instance
 	 */
 	static TB(timestamp, entropy = null) {
-		return UUID.createTimestampVariant(timestamp, 4, entropy);
+		return UUID.createTimestampVariant(timestamp, 6, entropy);
 	}
 
 	/**
@@ -310,63 +308,22 @@ class UUID {
 
 	/**
 	 * Set 70-bit timestamp according to specification
-	 * @param {number} timestampValue - Timestamp value (in seconds for versions 1 and 3, milliseconds for versions 2 and 4)
-	 * @param {boolean} [ordered] - True for the ordered layout (versions 3 and 4), false for the legacy layout (versions 1 and 2)
+	 * @param {number|bigint|string|Date} timestampValue - Timestamp value (in seconds for versions 1, 3 and 5, milliseconds for versions 2, 4 and 6); any whole number within ±(2^69 - 1)
+	 * @param {import("./lib/timestamp.mjs").TimestampLayout} [layout] - Bit layout to write: "full" (versions 5 and 6), "ordered" (3 and 4) or "legacy" (1 and 2)
 	 * @private
 	 */
-	_setTimestamp(timestampValue, ordered = true) {
-		// Handle sign bit (bit 0)
-		const isNegative = timestampValue < 0;
-		const absTimestamp = Math.abs(timestampValue);
-
-		// Set sign bit: 0 = negative, 1 = positive
-		BitUtils.setBits(this._buffer, 0, 1, isNegative ? 0 : 1);
-
-		// Convert absolute timestamp to BigInt
-		const absTimestampBig = BigInt(Math.floor(absTimestamp));
-
-		// Apply negative timestamp ordering rule for storage
-		// If negative: stored = (2^69 - 1) - abs(magnitude)
-		// If positive: store magnitude directly
-		let storedMagnitude;
-		if (isNegative) {
-			const maxValue = (BigInt(1) << BigInt(69)) - BigInt(1); // 2^69 - 1
-			storedMagnitude = maxValue - absTimestampBig;
-		} else {
-			storedMagnitude = absTimestampBig;
-		}
-
-		this._setStoredMagnitude(storedMagnitude, ordered);
+	_setTimestamp(timestampValue, layout = "full") {
+		writeTimestamp(this._buffer, toTimestampBigInt(timestampValue), layout);
 	}
 
 	/**
 	 * Write the 69-bit stored magnitude (already in negative-ordering form) into segment A (bits 1-63) and bits 69-74
 	 * @param {bigint} storedMagnitude - Stored 69-bit magnitude
-	 * @param {boolean} ordered - True for the ordered layout (versions 3 and 4), false for the legacy layout (versions 1 and 2)
+	 * @param {import("./lib/timestamp.mjs").TimestampLayout} layout - Bit layout to write: "full" (versions 5 and 6), "ordered" (3 and 4) or "legacy" (1 and 2)
 	 * @private
 	 */
-	_setStoredMagnitude(storedMagnitude, ordered) {
-		// Split the stored magnitude into components.
-		// magnitude bits 62..32 (31 bits) and bits 31..0 (32 bits)
-		const upper31 = Number((storedMagnitude >> BigInt(32)) & BigInt(0x7fffffff));
-		const lower32 = Number(storedMagnitude & BigInt(0xffffffff));
-		if (ordered) {
-			// Ordered layout (versions 3 and 4): segment A (bits 1-63) holds the
-			// magnitude most significant bit first, so the byte order of the UUID
-			// follows the timestamp order (spec 7.3): upper 31 bits at bits 1-31,
-			// lower 32 bits at bits 32-63.
-			BitUtils.setBits(this._buffer, 1, 31, upper31);
-			BitUtils.setBits(this._buffer, 32, 32, lower32);
-		} else {
-			// Legacy layout (versions 1 and 2, kept so existing ids decode as
-			// before): lower 32 bits at bits 1-32, upper 31 bits at bits 33-63.
-			BitUtils.setBits(this._buffer, 1, 32, lower32);
-			BitUtils.setBits(this._buffer, 33, 31, upper31);
-		}
-
-		// Set upper 6 bits, magnitude bits 68..63 (bits 69-74)
-		const upper6 = Number((storedMagnitude >> BigInt(63)) & BigInt(0x3f));
-		BitUtils.setBits(this._buffer, 69, 6, upper6);
+	_setStoredMagnitude(storedMagnitude, layout) {
+		writeStoredMagnitude(this._buffer, storedMagnitude, layout);
 	}
 
 	/**
@@ -375,24 +332,7 @@ class UUID {
 	 * @private
 	 */
 	_getStoredMagnitude() {
-		// Versions 3 and 4 use the ordered layout (magnitude bits 62..32 at bits
-		// 1-31, bits 31..0 at bits 32-63); versions 1 and 2 use the legacy layout
-		// (bits 31..0 at bits 1-32, bits 62..32 at bits 33-63).
-		let middle31;
-		let lower32;
-		if (isOrderedVersion(this.getVersion())) {
-			middle31 = BigInt(BitUtils.getBitsAsNumber(this._buffer, 1, 31));
-			lower32 = BigInt(BitUtils.getBitsAsNumber(this._buffer, 32, 32));
-		} else {
-			lower32 = BigInt(BitUtils.getBitsAsNumber(this._buffer, 1, 32));
-			middle31 = BigInt(BitUtils.getBitsAsNumber(this._buffer, 33, 31));
-		}
-
-		// Get upper 6 bits (bits 69-74)
-		const upper6 = BigInt(BitUtils.getBitsAsNumber(this._buffer, 69, 6));
-
-		// Reconstruct the stored 69-bit magnitude: lower32 | (middle31 << 32) | (upper6 << 63)
-		return lower32 | (middle31 << BigInt(32)) | (upper6 << BigInt(63));
+		return readStoredMagnitude(this._buffer, timestampLayout(this.getVersion()));
 	}
 
 	/**
@@ -518,8 +458,8 @@ class UUID {
 	 * Get the version/variant identifier (TA, TB, IA for custom variants, or RFC version number)
 	 * @returns {string|number|null} Version identifier (e.g., "TA", "TB", "IA", 1-8 for RFC, or null if invalid)
 	 * @example
-	 * uuid.version(); // => "TA" for Timestamp v3 (and legacy v1)
-	 * uuid.version(); // => "TB" for Timestamp v4 (and legacy v2)
+	 * uuid.version(); // => "TA" for Timestamp v5 (and the older v3 and v1)
+	 * uuid.version(); // => "TB" for Timestamp v6 (and the older v4 and v2)
 	 * uuid.version(); // => "IA" for Issuer v1
 	 * uuid.version(); // => 4 for RFC v4
 	 */
@@ -531,8 +471,8 @@ class UUID {
 
 			// Timestamp Variant (subvariant 00)
 			if (subvariant === SUBVARIANT_TIMESTAMP) {
-				if (version === 1 || version === 3) return "TA";
-				if (version === 2 || version === 4) return "TB";
+				if (version === 1 || version === 3 || version === 5) return "TA";
+				if (version === 2 || version === 4 || version === 6) return "TB";
 				// Future timestamp versions can be added here
 				return `Timestamp v${version}`;
 			}
@@ -587,25 +527,25 @@ class UUID {
 	}
 
 	/**
-	 * Check whether this is a Timestamp Variant UUID in the legacy low-word-first layout (versions 1 and 2)
+	 * Check whether this is a Timestamp Variant UUID in an older layout: versions 1 and 2 (legacy low-word-first) or 3 and 4 (ordered, chronological only within ±(2^63 - 1))
 	 * Select stored ids to rewrite with {@link UUID.migrate}.
-	 * @returns {boolean} True for timestamp-variant versions 1 and 2
+	 * @returns {boolean} True for timestamp-variant versions 1 to 4
 	 */
 	isLegacyTimestampLayout() {
 		if (!this.isTimestampVariant()) {
 			return false;
 		}
 		const version = this.getVersion();
-		return version === 1 || version === 2;
+		return version >= 1 && version <= 4;
 	}
 
 	/**
-	 * Rewrite a legacy timestamp id (version 1 or 2) into the ordered layout (version 3 or 4)
-	 * The sign, the timestamp value and the 49 entropy bits (bits 79-127) are carried over unchanged, so the mapping is deterministic: the same legacy id always migrates to the same new id. Ids already at version 3 or 4, and every non-timestamp UUID, come back as an equal copy. Throws only when the input cannot be parsed.
+	 * Rewrite a timestamp id in an older layout into the full layout: versions 1 and 3 become 5 (seconds), versions 2 and 4 become 6 (milliseconds)
+	 * The sign, the timestamp value and the 49 entropy bits (bits 79-127) are carried over unchanged, so the mapping is deterministic: the same old id always migrates to the same new id. Ids already at version 5 or 6, and every non-timestamp UUID, come back as an equal copy. Throws only when the input cannot be parsed.
 	 * @param {UUID|string|Uint8Array} input - A UUID instance, a UUID string, or a 16-byte buffer
 	 * @returns {UUID} New UUID instance
 	 * @example
-	 * UUID.migrate("e7f2b400-0000-018b-e005-c289f23865d3").toString(); // version 2 -> version 4, same timestamp
+	 * UUID.migrate("e7f2b400-0000-018b-e005-c289f23865d3").toString(); // version 2 -> version 6, same timestamp
 	 */
 	static migrate(input) {
 		const source = input instanceof UUID ? input : new UUID(input);
@@ -615,45 +555,64 @@ class UUID {
 		}
 
 		const stored = source._getStoredMagnitude();
-		result._setVersion(source.getVersion() + 2);
-		result._setStoredMagnitude(stored, true);
+		result._setVersion(isSecondsVersion(source.getVersion()) ? 5 : 6);
+		result._setStoredMagnitude(stored, "full");
 		return result;
 	}
 
 	/**
+	 * Compare two UUIDs for sorting by time, exact across the whole 70-bit timestamp range and across layouts.
+	 * Timestamp Variant ids (versions 1-6, TA and TB) come first, ordered by the time they hold: seconds and milliseconds are compared on one scale (a TA id stands for the start of its second), and ties fall back to byte order. Every other UUID comes after them in byte order. Use it where byte order isn't enough: a mix of layouts (versions 3/4 next to 5/6) or version 3/4 ids past ±(2^63 - 1).
+	 * @param {UUID|string|Uint8Array} a - First UUID (instance, string or 16-byte buffer)
+	 * @param {UUID|string|Uint8Array} b - Second UUID (instance, string or 16-byte buffer)
+	 * @returns {-1|0|1} Negative when a sorts first, positive when b does, 0 when the bytes are equal
+	 * @example
+	 * ids.sort(UUID.compare);
+	 */
+	static compare(a, b) {
+		const left = a instanceof UUID ? a : new UUID(a);
+		const right = b instanceof UUID ? b : new UUID(b);
+		const leftTime = left._sortTime();
+		const rightTime = right._sortTime();
+		if (leftTime !== null && rightTime === null) return -1;
+		if (leftTime === null && rightTime !== null) return 1;
+		if (leftTime !== null && leftTime !== rightTime) return leftTime < rightTime ? -1 : 1;
+		for (let i = 0; i < 16; i++) {
+			if (left._buffer[i] !== right._buffer[i]) return left._buffer[i] < right._buffer[i] ? -1 : 1;
+		}
+		return 0;
+	}
+
+	/**
+	 * The timestamp on one scale (milliseconds) for {@link UUID.compare}, or null for a non-timestamp UUID
+	 * @returns {bigint|null} Milliseconds (seconds versions multiplied by 1000), or null
+	 * @private
+	 */
+	_sortTime() {
+		const value = this.getTimestampBigInt();
+		if (value === null) return null;
+		return isSecondsVersion(this.getVersion()) ? value * 1000n : value;
+	}
+
+	/**
 	 * Get the timestamp value from a Timestamp Variant UUID
-	 * @returns {number|null} Timestamp value in the stored precision (seconds for versions 1 and 3, milliseconds for versions 2 and 4), or null if not a Timestamp Variant
+	 * @returns {number|bigint|null} Timestamp value in the stored precision (seconds for versions 1, 3 and 5, milliseconds for versions 2, 4 and 6): a number while it is a safe integer, an exact bigint past ±(2^53 - 1), or null if not a Timestamp Variant
 	 */
 	getTimestamp() {
+		const value = this.getTimestampBigInt();
+		return value === null ? null : toTimestampNumber(value);
+	}
+
+	/**
+	 * Get the timestamp value from a Timestamp Variant UUID as a bigint, exact across the whole 70-bit range
+	 * @returns {bigint|null} Timestamp value in the stored precision (seconds for versions 1, 3 and 5, milliseconds for versions 2, 4 and 6), or null if not a Timestamp Variant
+	 */
+	getTimestampBigInt() {
 		// Timestamp only exists in Timestamp Variant (subvariant 00)
 		if (!this.isTimestampVariant()) {
 			return null;
 		}
-
-		// Extract sign bit (bit 0)
-		const signBit = BitUtils.getBitsAsNumber(this._buffer, 0, 1);
-		const isPositive = signBit === 1;
-
-		// Extract timestamp magnitude from the 69 bits
-		// Bits 1-63 (63 bits), bits 69-74 (6 bits) = 69 bits total
-
-		const storedMagnitude = this._getStoredMagnitude();
-
-		// Apply negative timestamp ordering rule
-		// If sign bit = 0 (negative): stored = (2^69 - 1) - abs(magnitude)
-		// Therefore: abs(magnitude) = (2^69 - 1) - stored
-		// And: timestamp = -abs(magnitude)
-		let timestamp;
-		if (isPositive) {
-			timestamp = Number(storedMagnitude);
-		} else {
-			// Negative timestamp: decode using ordering rule
-			const maxValue = (BigInt(1) << BigInt(69)) - BigInt(1); // 2^69 - 1
-			const absMagnitude = maxValue - storedMagnitude;
-			timestamp = -Number(absMagnitude);
-		}
-
-		return timestamp;
+		return readTimestamp(this._buffer, timestampLayout(this.getVersion()));
 	}
 
 	/**
