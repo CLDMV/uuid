@@ -160,7 +160,7 @@ Timestamp Version 1 — Seconds resolution (legacy layout):
     - Uses the 70-bit signed timestamp model.
     - Segment A stores the low 32 bits of the magnitude at bits 1–32 and magnitude bits 62..32 at bits 33–63. Byte order is not chronological across a 2^32 boundary.
     - Bits 69–74 and 79–127 are defined by the timestamp-v1 specification.
-    - Kept so ids already minted decode unchanged. New ids SHOULD use Version 3.
+    - Kept so ids already minted decode unchanged. New ids SHOULD use Version 5.
 
 Timestamp Version 2 — Milliseconds resolution (legacy layout):
 
@@ -169,25 +169,41 @@ Timestamp Version 2 — Milliseconds resolution (legacy layout):
     - Segment A uses the same low-word-first layout as Version 1.
     - Bits 69–74 are currently undefined unless later specified.
     - Bits 79–127 are defined by the timestamp-v2 specification.
-    - Kept so ids already minted decode unchanged. New ids SHOULD use Version 4.
+    - Kept so ids already minted decode unchanged. New ids SHOULD use Version 6.
 
 Timestamp Version 3 — Seconds resolution (ordered layout):
 
     - Timestamp represents seconds from epoch.
     - Uses the 70-bit signed timestamp model.
-    - Segment A stores the magnitude most significant bit first: magnitude bits 62..32 at bits 1–31 and magnitude bits 31..0 at bits 32–63. The byte order of the UUID follows the timestamp order (section 7.3).
-    - Bits 69–74 hold magnitude bits 68..63.
+    - Segment A stores magnitude bits 62..32 at bits 1–31 and magnitude bits 31..0 at bits 32–63.
+    - Bits 69–74 hold magnitude bits 68..63. They follow the variant field, so the byte order of the UUID follows the timestamp order (section 7.3) only within ±(2^63 − 1).
     - Bits 79–127 are defined by the timestamp-v1 specification.
+    - Kept so ids already minted decode unchanged. New ids SHOULD use Version 5.
 
 Timestamp Version 4 — Milliseconds resolution (ordered layout):
 
     - Timestamp represents milliseconds from epoch.
     - Uses the 70-bit signed timestamp model.
     - Segment A uses the same ordered layout as Version 3.
-    - Bits 69–74 hold magnitude bits 68..63.
+    - Bits 69–74 hold magnitude bits 68..63, with the same ordering limit as Version 3.
+    - Bits 79–127 are defined by the timestamp-v2 specification.
+    - Kept so ids already minted decode unchanged. New ids SHOULD use Version 6.
+
+Timestamp Version 5 — Seconds resolution (full layout):
+
+    - Timestamp represents seconds from epoch.
+    - Uses the 70-bit signed timestamp model.
+    - The stored magnitude is laid out most significant bit first across the whole field: magnitude bits 68..38 at bits 1–31, bits 37..6 at bits 32–63 and bits 5..0 at bits 69–74. The byte order of the UUID follows the timestamp order (section 7.3) across the full ±(2^69 − 1).
+    - Bits 79–127 are defined by the timestamp-v1 specification.
+
+Timestamp Version 6 — Milliseconds resolution (full layout):
+
+    - Timestamp represents milliseconds from epoch.
+    - Uses the 70-bit signed timestamp model.
+    - The magnitude uses the same full layout as Version 5.
     - Bits 79–127 are defined by the timestamp-v2 specification.
 
-A Version 1 id and a Version 3 id with the same timestamp and entropy differ only in the version bits and the arrangement of the magnitude bits, so a Version 1 or 2 id converts to Version 3 or 4 without loss.
+Ids of the same resolution with the same timestamp and entropy differ only in the version bits and the arrangement of the magnitude bits, so a Version 1 or 3 id converts to Version 5, and a Version 2 or 4 id to Version 6, without loss.
 
 ---
 

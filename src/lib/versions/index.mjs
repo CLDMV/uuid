@@ -19,14 +19,28 @@
  * Consolidates custom UUID variant implementations (TA, TB, IA) for easy import.
  *
  * Variant Structure:
- * - TA: Timestamp Variant v1 (seconds precision)
- * - TB: Timestamp Variant v2 (milliseconds precision)
+ * - TA: Timestamp Variant v5 (seconds precision, full layout); v1 and v3 are the older seconds layouts
+ * - TB: Timestamp Variant v6 (milliseconds precision, full layout); v2 and v4 are the older milliseconds layouts
  * - IA: Issuer Variant v1 (10-bit issuer ID)
  */
 
 // Timestamp Variants
-export { v1 as timestampV1, ta, parseTimestampV1 } from "./timestamp/index.mjs";
-export { v2 as timestampV2, tb, parseTimestampV2 } from "./timestamp/index.mjs";
+export {
+	v1 as timestampV1,
+	v2 as timestampV2,
+	v3 as timestampV3,
+	v4 as timestampV4,
+	v5 as timestampV5,
+	v6 as timestampV6,
+	ta,
+	tb,
+	parseTimestampV1,
+	parseTimestampV2,
+	parseTimestampV3,
+	parseTimestampV4,
+	parseTimestampV5,
+	parseTimestampV6
+} from "./timestamp/index.mjs";
 
 // Issuer Variant
 export { v1 as issuerV1, ia, parseIssuerID, validateIssuerID, getIssuerCategory } from "./issuer/index.mjs";

@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-10-02T15:33:31-07:00 (1790980411)
+ *	@Last modified time: 2026-11-21T12:52:12-08:00 (1795294332)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -21,6 +21,7 @@
  */
 
 import crypto from "crypto";
+import { toTimestampBigInt } from "./timestamp.mjs";
 
 /**
  * Entropy source and validation utilities
@@ -205,16 +206,18 @@ class EntropySource {
 	/**
 	 * Create entropy from timestamp with additional randomness
 	 * Note: This method ensures the entropy is NOT solely dependent on the timestamp
-	 * @param {number|Date} timestamp - Timestamp component
+	 * @param {number|bigint|string|Date} timestamp - Timestamp component (milliseconds for a Date); any whole number within ±(2^69 - 1)
 	 * @param {number} additionalBytes - Additional random bytes to mix in
 	 * @returns {Buffer} Mixed entropy
 	 */
 	static createTimestampIndependentEntropy(timestamp, additionalBytes = 16) {
-		const timestampMs = timestamp instanceof Date ? timestamp.getTime() : timestamp;
-
-		// Create timestamp component (8 bytes)
-		const timestampBuffer = Buffer.allocUnsafe(8);
-		timestampBuffer.writeBigUInt64BE(BigInt(timestampMs), 0);
+		// Timestamp component: 9 bytes, two's complement, which holds the whole 70-bit range including negatives
+		let encoded = BigInt.asUintN(72, toTimestampBigInt(timestamp, "ms"));
+		const timestampBuffer = Buffer.alloc(9);
+		for (let i = 8; i >= 0; i--) {
+			timestampBuffer[i] = Number(encoded & 0xffn);
+			encoded >>= 8n;
+		}
 
 		// Generate additional random entropy
 		const randomEntropy = EntropySource.generateSecureBytes(additionalBytes);

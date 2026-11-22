@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-02T21:25:21-08:00 (1793683521)
+ *	@Last modified time: 2026-11-21T12:52:12-08:00 (1795294332)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -20,15 +20,9 @@
  * All validations reference specific bit positions and specification requirements.
  */
 
-import {
-	VARIANT_BITS,
-	SUBVARIANT_TIMESTAMP,
-	SUBVARIANT_ISSUER,
-	ISSUER_CATEGORIES,
-	ISSUER_ID_MASK,
-	isOrderedVersion
-} from "./constants.mjs";
+import { VARIANT_BITS, SUBVARIANT_TIMESTAMP, SUBVARIANT_ISSUER, ISSUER_CATEGORIES, ISSUER_ID_MASK, timestampLayout } from "./constants.mjs";
 import { BitUtils } from "./bit-utils.mjs";
+import { readStoredMagnitude, TIMESTAMP_MAX_MAGNITUDE } from "./timestamp.mjs";
 import { toHex } from "@cldmv/uuid/bytes";
 
 /**
@@ -165,47 +159,24 @@ class UUIDValidator {
 		const lower63 = BitUtils.getBits(uuidBuffer, 1, 63);
 		results.fields.timestampLower63 = lower63;
 
-		// Versions 3 and 4 store the magnitude most significant bit first, so the
-		// segment is the magnitude's lower 63 bits as-is. Versions 1 and 2 (and any
-		// other version) use the legacy layout: the low 32 magnitude bits at bits
-		// 1-32 and the upper 31 at bits 33-63.
-		let magnitudeLower63 = lower63;
-		if (!isOrderedVersion(results.fields.version)) {
-			const legacyLow32 = BigInt(BitUtils.getBitsAsNumber(uuidBuffer, 1, 32));
-			const legacyUpper31 = BigInt(BitUtils.getBitsAsNumber(uuidBuffer, 33, 31));
-			magnitudeLower63 = (legacyUpper31 << 32n) | legacyLow32;
-		}
-
-		// Extract timestamp continuation bits (bits 69-74)
+		// Extract the raw bits 69-74 (timestamp continuation), exactly as stored
 		const timestampContinuation = BitUtils.getBitsAsNumber(uuidBuffer, 69, 6);
 		results.fields.timestampContinuation = timestampContinuation;
 
-		// Extract reserved bit 69 for validation
-		const reservedBit69 = BitUtils.getBitsAsNumber(uuidBuffer, 69, 1);
-		results.fields.reservedBit69 = reservedBit69;
+		// Bit 69 is a magnitude bit, not a reserved bit: in versions 1-4 it is
+		// magnitude bit 68, set for every negative timestamp (stored as
+		// (2^69 - 1) - |t|) and for positive ones from 2^68 up; in versions 5
+		// and 6 it is magnitude bit 5. It carries no warning. The field stays for
+		// callers that read it.
+		results.fields.reservedBit69 = BitUtils.getBitsAsNumber(uuidBuffer, 69, 1);
 
-		// Check if reserved bits are being used
-		if (reservedBit69 !== 0) {
-			results.warnings.push(`Reserved bit 69 is set to ${reservedBit69} (should be 0)`);
-		}
-
-		// Reconstruct 70-bit timestamp (69 bits magnitude + 1 sign bit)
-		// Bits 1-63 (63 bits) + bits 69-74 (6 bits) = 69 bits magnitude
-		const magnitude = (BigInt(timestampContinuation) << 63n) | magnitudeLower63;
+		// Reassemble the 69-bit stored magnitude in the version's layout:
+		// "full" (5, 6), "ordered" (3, 4) or "legacy" (1, 2 and any other version)
+		const magnitude = readStoredMagnitude(uuidBuffer, timestampLayout(results.fields.version));
 		results.fields.timestampMagnitude = magnitude;
 
-		// Apply negative ordering rule if negative
-		let actualTimestamp;
-		if (signBit === 0) {
-			// Negative: stored = (2^69 - 1) - abs(magnitude)
-			// So: abs(magnitude) = (2^69 - 1) - stored
-			const maxMagnitude = (1n << 69n) - 1n;
-			actualTimestamp = -(maxMagnitude - magnitude);
-		} else {
-			// Positive: magnitude stored normally
-			actualTimestamp = magnitude;
-		}
-		results.fields.actualTimestamp = actualTimestamp;
+		// Negative ordering rule: stored = (2^69 - 1) - |t|
+		results.fields.actualTimestamp = signBit === 0 ? magnitude - TIMESTAMP_MAX_MAGNITUDE : magnitude;
 
 		// Note: Bits 64-68 contain variant (64-66) and subvariant (67-68)
 		// These overlap with what would be timestamp bits in a pure 70-bit layout

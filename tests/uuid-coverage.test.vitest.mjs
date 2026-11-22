@@ -54,9 +54,9 @@ describe("UUID branch and alias coverage", () => {
 	});
 
 	it("should return dynamic custom version labels", () => {
-		const timestampV5 = UUID.createTimestampVariant(Date.now(), 5);
+		const timestampV7 = UUID.createTimestampVariant(Date.now(), 7);
 		const issuerV2 = UUID.createIssuerVariant(100, 2);
-		expect(timestampV5.version()).toBe("Timestamp v5");
+		expect(timestampV7.version()).toBe("Timestamp v7");
 		expect(issuerV2.version()).toBe("Issuer v2");
 	});
 
