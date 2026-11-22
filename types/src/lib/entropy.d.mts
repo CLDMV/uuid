@@ -46,7 +46,7 @@ export type EntropyOptions = {
     /**
      * - Tick length for the counter: "ms" for TB (default), "s" for TA
      */
-    precision?: "ms" | "s" | undefined;
+    precision?: "s" | "ms" | undefined;
     /**
      * - How many bits of entropy to fill, counted in bits (default 49, what TA/TB keep). The entropy fills the last `bits` bits of the array, which is 16 bytes, or `Math.ceil(bits / 8)` bytes for more than 128 bits. Fields are filled in order (12-bit counter, 16-bit seed fingerprint, random bits) and cut where the length runs out: under 28 bits the fingerprint keeps only its top bits, under 12 the counter keeps only its low bits
      */

@@ -43,11 +43,11 @@ export class EntropySource {
     /**
      * Create entropy from timestamp with additional randomness
      * Note: This method ensures the entropy is NOT solely dependent on the timestamp
-     * @param {number|Date} timestamp - Timestamp component
+     * @param {number|bigint|string|Date} timestamp - Timestamp component (milliseconds for a Date); any whole number within ±(2^69 - 1)
      * @param {number} additionalBytes - Additional random bytes to mix in
      * @returns {Buffer} Mixed entropy
      */
-    static createTimestampIndependentEntropy(timestamp: number | Date, additionalBytes?: number): Buffer;
+    static createTimestampIndependentEntropy(timestamp: number | bigint | string | Date, additionalBytes?: number): Buffer;
     /**
      * Estimate entropy in a buffer using Shannon entropy
      * @param {Buffer} buffer - Buffer to analyze

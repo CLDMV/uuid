@@ -7,7 +7,7 @@
  *	@Email: <Shinrai@users.noreply.github.com>
  *	-----
  *	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
- *	@Last modified time: 2026-11-09T04:45:36-08:00 (1794228336)
+ *	@Last modified time: 2026-11-21T12:52:13-08:00 (1795294333)
  *	-----
  *	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
  *
@@ -151,7 +151,12 @@ const migrated: UUID = UUID.migrate(fromString);
 const migratedFromString: UUID = UUID.migrate(ta.toString());
 const migratedFromBytes: UUID = UUID.migrate(ta.toBuffer());
 const isLegacy: boolean = migrated.isLegacyTimestampLayout();
-const ts: number | null = tb.getTimestamp();
+const ts: number | bigint | null = tb.getTimestamp();
+const tsBig: bigint | null = tb.getTimestampBigInt();
+const order: number = UUID.compare(tb, ta.toString());
+const sortedIds: UUID[] = [tb, ta].sort(UUID.compare);
+const tbFromBigInt: UUID = UUID.TB(2n ** 69n - 1n);
+const taFromString: UUID = UUID.TA("-590295810358705651711");
 const issuerID: number | null = ia.getIssuerID();
 const bytes: Uint8Array = ta.toBuffer();
 const asString: string = \`\${ta}\`;
@@ -166,7 +171,7 @@ const report = await UUID.validate(ta.toBuffer());
 
 export {
 	same, sameLower, v1, v4, v4Random, v4Buf, v6, v7, v8, v1Node, v3, v5, nil, parsed,
-	text, fromArray, valid, rfcVersion, ta, tb, ia, viaTimestamp, seededTick, seededBytes, tbSeeded, taSeeded, unseeded, sizedBytes, sizedTick, viaIssuer, instance, fromString, migrated, migratedFromString, migratedFromBytes, isLegacy, ts, issuerID,
+	text, fromArray, valid, rfcVersion, ta, tb, ia, viaTimestamp, seededTick, seededBytes, tbSeeded, taSeeded, unseeded, sizedBytes, sizedTick, viaIssuer, instance, fromString, migrated, migratedFromString, migratedFromBytes, isLegacy, ts, tsBig, order, sortedIds, tbFromBigInt, taFromString, issuerID,
 	bytes, asString, json, category, available, info, report
 };
 `

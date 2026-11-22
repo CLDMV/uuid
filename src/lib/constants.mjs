@@ -69,19 +69,25 @@ export const VERSION_START_BIT = 75;
 export const VERSION_BIT_COUNT = 4;
 
 /**
- * Timestamp versions that store seconds: 1 (legacy layout) and 3 (ordered layout). Every other timestamp version stores milliseconds.
+ * Timestamp versions that store seconds: 1 (legacy layout), 3 (ordered layout) and 5 (full layout). Every other timestamp version stores milliseconds.
  * @constant {number[]}
  */
-export const TIMESTAMP_SECONDS_VERSIONS = [1, 3];
+export const TIMESTAMP_SECONDS_VERSIONS = [1, 3, 5];
 
 /**
- * Timestamp versions that lay the magnitude out most significant bit first in segment A: 3 (seconds) and 4 (milliseconds). Every other version, including 1 and 2, keeps the legacy low-word-first layout so ids minted before the ordered layout decode unchanged.
+ * Timestamp versions in the ordered layout (magnitude bits 62..0 most significant bit first in segment A, bits 68..63 at bits 69-74): 3 (seconds) and 4 (milliseconds).
  * @constant {number[]}
  */
 export const TIMESTAMP_ORDERED_VERSIONS = [3, 4];
 
 /**
- * Whether a timestamp version stores seconds (versions 1 and 3) rather than milliseconds
+ * Timestamp versions in the full layout (magnitude bits 68..6 in segment A, bits 5..0 at bits 69-74, so byte order follows time across the whole range): 5 (seconds) and 6 (milliseconds). TA and TB mint these.
+ * @constant {number[]}
+ */
+export const TIMESTAMP_FULL_VERSIONS = [5, 6];
+
+/**
+ * Whether a timestamp version stores seconds (versions 1, 3 and 5) rather than milliseconds
  * @param {number} version - Timestamp variant version
  * @returns {boolean} True for seconds precision
  */
@@ -90,12 +96,14 @@ export function isSecondsVersion(version) {
 }
 
 /**
- * Whether a timestamp version uses the ordered (most significant bit first) layout (versions 3 and 4)
+ * The magnitude layout a timestamp version uses. Versions other than 3-6, including 1 and 2, read as the legacy layout so ids minted before the ordered layout decode unchanged.
  * @param {number} version - Timestamp variant version
- * @returns {boolean} True for the ordered layout
+ * @returns {import("./timestamp.mjs").TimestampLayout} "full" for 5 and 6, "ordered" for 3 and 4, "legacy" otherwise
  */
-export function isOrderedVersion(version) {
-	return TIMESTAMP_ORDERED_VERSIONS.includes(version);
+export function timestampLayout(version) {
+	if (TIMESTAMP_FULL_VERSIONS.includes(version)) return "full";
+	if (TIMESTAMP_ORDERED_VERSIONS.includes(version)) return "ordered";
+	return "legacy";
 }
 
 /**

@@ -26,9 +26,9 @@ const entropyOf = (uuid) => BitUtils.getBits(uuid.toBuffer(), 79, 49);
 
 describe("UUID.migrate", () => {
 	test.each([
-		["TB", LEGACY_TB, 2, 4, 1700000000000, (ts, entropy) => UUID.TB(ts, entropy)],
-		["TA", LEGACY_TA, 1, 3, 1700000000, (ts, entropy) => UUID.TA(ts, entropy)]
-	])("%s legacy vector migrates to the ordered layout", (_label, legacy, fromVersion, toVersion, timestamp, mint) => {
+		["TB", LEGACY_TB, 2, 6, 1700000000000, (ts, entropy) => UUID.TB(ts, entropy)],
+		["TA", LEGACY_TA, 1, 5, 1700000000, (ts, entropy) => UUID.TA(ts, entropy)]
+	])("%s legacy vector migrates to the full layout", (_label, legacy, fromVersion, toVersion, timestamp, mint) => {
 		const source = new UUID(legacy);
 		expect(source.getVersion()).toBe(fromVersion);
 		expect(source.isLegacyTimestampLayout()).toBe(true);
@@ -76,8 +76,21 @@ describe("UUID.migrate", () => {
 		expect(issuer.isLegacyTimestampLayout()).toBe(false);
 	});
 
-	test("timestamp versions other than 1 and 2 pass through unchanged", () => {
-		for (const version of [3, 4, 5]) {
+	test.each([
+		[3, 5, 1700000000, (ts, entropy) => UUID.TA(ts, entropy)],
+		[4, 6, 1700000000000, (ts, entropy) => UUID.TB(ts, entropy)]
+	])("ordered version %i migrates to full version %i", (fromVersion, toVersion, timestamp, mint) => {
+		const source = UUID.timestamp(timestamp, fromVersion);
+		expect(source.isLegacyTimestampLayout()).toBe(true);
+		const migrated = UUID.migrate(source);
+		expect(migrated.getVersion()).toBe(toVersion);
+		expect(migrated.getTimestamp()).toBe(timestamp);
+		expect(entropyOf(migrated)).toBe(entropyOf(source));
+		expect(migrated.toString()).toBe(mint(timestamp, source.toBuffer()).toString());
+	});
+
+	test("timestamp versions 5 and up pass through unchanged", () => {
+		for (const version of [5, 6, 7]) {
 			const uuid = UUID.timestamp(1700000000000, version);
 			expect(UUID.migrate(uuid).toString()).toBe(uuid.toString());
 			expect(uuid.isLegacyTimestampLayout()).toBe(false);
@@ -90,11 +103,14 @@ describe("UUID.migrate", () => {
 			[-1, 2],
 			[0, 1],
 			[-86400, 1],
-			[2 ** 53 - 1, 2]
+			[2 ** 53 - 1, 2],
+			[-(2n ** 69n - 1n), 3],
+			[2n ** 63n + 7n, 4],
+			[2n ** 69n - 1n, 4]
 		]) {
 			const source = UUID.timestamp(ts, version);
 			const migrated = UUID.migrate(source);
-			expect(migrated.getVersion()).toBe(version + 2);
+			expect(migrated.getVersion()).toBe(version % 2 === 1 ? 5 : 6);
 			expect(migrated.getTimestamp()).toBe(source.getTimestamp());
 			expect(entropyOf(migrated)).toBe(entropyOf(source));
 			expect(BitUtils.getBitsAsNumber(migrated.toBuffer(), 0, 1)).toBe(BitUtils.getBitsAsNumber(source.toBuffer(), 0, 1));
@@ -130,9 +146,11 @@ describe("UUID.migrate", () => {
 });
 
 describe("UUID#isLegacyTimestampLayout", () => {
-	test("is true for timestamp versions 1 and 2 only", () => {
+	test("is true for timestamp versions 1 to 4 only", () => {
 		expect(UUID.timestamp(1700000000, 1).isLegacyTimestampLayout()).toBe(true);
 		expect(UUID.timestamp(1700000000000, 2).isLegacyTimestampLayout()).toBe(true);
+		expect(UUID.timestamp(1700000000, 3).isLegacyTimestampLayout()).toBe(true);
+		expect(UUID.timestamp(1700000000000, 4).isLegacyTimestampLayout()).toBe(true);
 		expect(UUID.TA().isLegacyTimestampLayout()).toBe(false);
 		expect(UUID.TB().isLegacyTimestampLayout()).toBe(false);
 	});
