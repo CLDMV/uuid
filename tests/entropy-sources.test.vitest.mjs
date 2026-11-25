@@ -89,9 +89,25 @@ describe("EntropySource.validateEntropyQuality", () => {
 });
 
 describe("EntropySource.generateValidatedEntropy", () => {
+	// Real random bytes fail the 40-60% bit-balance check about 2.7% of the time at 16 bytes,
+	// so these tests feed fixed bytes to keep the outcome deterministic.
 	it("should return entropy when validation passes", () => {
+		const good = Buffer.alloc(16, 0xaa); // alternating bits: 50% balance, runs of 1
+		const generate = vi.spyOn(EntropySource, "generateSecureBytes").mockReturnValue(good);
 		const entropy = EntropySource.generateValidatedEntropy(16, 2);
-		expect(entropy.length).toBe(16);
+		expect(entropy).toBe(good);
+		expect(generate).toHaveBeenCalledTimes(1);
+	});
+
+	it("should retry until an attempt passes validation", () => {
+		const bad = Buffer.alloc(16, 0);
+		const good = Buffer.alloc(16, 0xaa);
+		const generate = vi.spyOn(EntropySource, "generateSecureBytes").mockReturnValueOnce(bad).mockReturnValueOnce(good);
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const entropy = EntropySource.generateValidatedEntropy(16, 2);
+		expect(entropy).toBe(good);
+		expect(generate).toHaveBeenCalledTimes(2);
+		expect(warn).toHaveBeenCalledTimes(1);
 	});
 
 	it("should throw when all validation attempts fail", () => {
