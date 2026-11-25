@@ -366,6 +366,9 @@ class UUIDValidator {
 	 * @returns {Object} Comprehensive validation report
 	 */
 	static generateValidationReport(uuidBuffer) {
+		if (!(uuidBuffer instanceof Uint8Array) || uuidBuffer.length !== 16) {
+			throw new Error("UUID must be a 16-byte buffer");
+		}
 		const hex = toHex(uuidBuffer);
 		const report = {
 			timestamp: new Date(),
