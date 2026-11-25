@@ -20,7 +20,8 @@
  */
 
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { EntropySource } from "../src/lib/entropy-sources.mjs";
+import { createHash } from "node:crypto";
+import { EntropySource } from "@cldmv/uuid/entropy";
 
 afterEach(() => {
 	vi.restoreAllMocks();
@@ -29,7 +30,7 @@ afterEach(() => {
 describe("EntropySource.generateSecureBytes", () => {
 	it("should generate requested number of random bytes", () => {
 		const bytes = EntropySource.generateSecureBytes(16);
-		expect(Buffer.isBuffer(bytes)).toBe(true);
+		expect(bytes).toBeInstanceOf(Uint8Array);
 		expect(bytes.length).toBe(16);
 	});
 
@@ -86,12 +87,58 @@ describe("EntropySource.validateEntropyQuality", () => {
 		expect(result.tests.bitBalance.value).toBeLessThan(1);
 		expect(result.tests.runLength.value).toBeGreaterThan(0);
 	});
+
+	it("should scale the bit-balance window with input length", () => {
+		// 4 standard deviations: sqrt(n)/2 per sigma, so 2*sqrt(n) set bits either side of n/2.
+		const short = EntropySource.validateEntropyQuality(new Uint8Array(16).fill(0xaa));
+		expect(short.tests.bitBalance.min).toBeCloseTo(0.5 - (2 * Math.sqrt(128)) / 128, 10);
+		expect(short.tests.bitBalance.max).toBeCloseTo(0.5 + (2 * Math.sqrt(128)) / 128, 10);
+		const long = EntropySource.validateEntropyQuality(new Uint8Array(4096).fill(0xaa));
+		expect(long.tests.bitBalance.max - long.tests.bitBalance.min).toBeLessThan(short.tests.bitBalance.max - short.tests.bitBalance.min);
+	});
+
+	it("should accept a 16-byte draw at 37.5% set bits that the old 40-60% window rejected", () => {
+		// 48 of 128 bits set (0x0f has 4 of 8; 0x03 has 2), all runs short.
+		const bytes = new Uint8Array([0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03]);
+		const result = EntropySource.validateEntropyQuality(bytes);
+		expect(result.tests.bitBalance.value).toBe(0.375);
+		expect(result.tests.bitBalance.passed).toBe(true);
+	});
+
+	it("should reject a large input whose bit balance is far off half", () => {
+		// 0x07 sets 3 of 8 bits: 37.5%, which is many standard deviations out at 32768 bits.
+		const result = EntropySource.validateEntropyQuality(new Uint8Array(4096).fill(0x07));
+		expect(result.tests.bitBalance.passed).toBe(false);
+		expect(result.passed).toBe(false);
+	});
+
+	it("should handle an empty input", () => {
+		const result = EntropySource.validateEntropyQuality(new Uint8Array(0));
+		expect(result.bitCount).toBe(0);
+		expect(result.passed).toBe(false);
+	});
 });
 
 describe("EntropySource.generateValidatedEntropy", () => {
+	// Fixed bytes keep these tests deterministic: real random bytes fail the bit-balance check
+	// now and then by design.
 	it("should return entropy when validation passes", () => {
+		const good = Buffer.alloc(16, 0xaa); // alternating bits: 50% balance, runs of 1
+		const generate = vi.spyOn(EntropySource, "generateSecureBytes").mockReturnValue(good);
 		const entropy = EntropySource.generateValidatedEntropy(16, 2);
-		expect(entropy.length).toBe(16);
+		expect(entropy).toBe(good);
+		expect(generate).toHaveBeenCalledTimes(1);
+	});
+
+	it("should retry until an attempt passes validation", () => {
+		const bad = Buffer.alloc(16, 0);
+		const good = Buffer.alloc(16, 0xaa);
+		const generate = vi.spyOn(EntropySource, "generateSecureBytes").mockReturnValueOnce(bad).mockReturnValueOnce(good);
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const entropy = EntropySource.generateValidatedEntropy(16, 2);
+		expect(entropy).toBe(good);
+		expect(generate).toHaveBeenCalledTimes(2);
+		expect(warn).toHaveBeenCalledTimes(1);
 	});
 
 	it("should throw when all validation attempts fail", () => {
@@ -113,12 +160,15 @@ describe("EntropySource.mixEntropySources", () => {
 	it("should return a copy when a single source is provided", () => {
 		const source = Buffer.from([1, 2, 3]);
 		const mixed = EntropySource.mixEntropySources([source]);
-		expect(mixed.equals(source)).toBe(true);
+		expect([...mixed]).toEqual([1, 2, 3]);
 		expect(mixed).not.toBe(source);
+		mixed[0] = 99;
+		expect(source[0]).toBe(1);
 	});
 
 	it("should XOR multiple sources and preserve max length", () => {
 		const mixed = EntropySource.mixEntropySources([Buffer.from([0xff, 0x00, 0x0f]), Buffer.from([0x0f, 0xf0])]);
+		expect(mixed).toBeInstanceOf(Uint8Array);
 		expect(mixed.length).toBe(3);
 		expect([...mixed]).toEqual([0xf0, 0xf0, 0x0f]);
 	});
@@ -132,10 +182,22 @@ describe("EntropySource timestamp and analysis utilities", () => {
 		expect(fromNumber.length).toBe(32);
 	});
 
+	it("should hash the 9-byte two's-complement timestamp followed by the random bytes", () => {
+		const random = new Uint8Array(16).fill(0x5a);
+		vi.spyOn(EntropySource, "generateSecureBytes").mockReturnValue(random);
+		const message = new Uint8Array(25);
+		message.set([0x00, 0x00, 0x00, 0x01, 0x8c, 0xc2, 0x51, 0xf4, 0x00], 0); // 1704067200000 = 0x18cc251f400
+		message.set(random, 9);
+		const expected = createHash("sha256").update(message).digest("hex");
+		const digest = EntropySource.createTimestampIndependentEntropy(1704067200000);
+		expect(Buffer.from(digest).toString("hex")).toBe(expected);
+	});
+
 	it("should estimate Shannon entropy for empty and non-empty buffers", () => {
-		expect(EntropySource.estimateShannnonEntropy(Buffer.alloc(0))).toBe(0);
-		const entropy = EntropySource.estimateShannnonEntropy(Buffer.from([0, 1, 2, 3, 4, 5, 6, 7]));
-		expect(entropy).toBeGreaterThan(0);
+		expect(EntropySource.estimateShannonEntropy(new Uint8Array(0))).toBe(0);
+		const entropy = EntropySource.estimateShannonEntropy(new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7]));
+		// 8 distinct values: 3 bits per byte, 24 bits in all
+		expect(entropy).toBe(24);
 	});
 
 	it("should analyze source and flag low uniqueness", () => {

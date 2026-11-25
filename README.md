@@ -14,18 +14,18 @@ The custom variants (`TA`, `TB`, `IA`) live in the variant `111` namespace, so t
 
 ## ✨ What's New
 
-### Latest: v2.0.1 (November 2026)
+### Latest: v2.1.0 (November 2026)
 
-- **One description for every UUID**: `getInfo()`, `validate()` and `validateDetailed()` give RFC and custom ids the same fields, `null` where a field doesn't apply. RFC ids stop getting made-up subvariants and issuer categories, RFC v1/v6/v7 ids report their timestamp (and sort by it in `UUID.compare()`), and `validate()` takes strings ([#120](https://github.com/CLDMV/uuid/pull/120), fixes [#119](https://github.com/CLDMV/uuid/issues/119) and [#123](https://github.com/CLDMV/uuid/issues/123)).
-- **`UUID.v1()` / `UUID.v6()` write the right time**: both produced wrong timestamps and now match the RFC 9562 test vectors (fixes [#124](https://github.com/CLDMV/uuid/issues/124)). Some validator fields are renamed; see the upgrade notes.
-- [View full v2.0.1 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v2/v2.0.1.md)
+- **Entropy helpers, published**: `import { EntropySource } from "@cldmv/uuid/entropy"` gives secure random bytes, the birthday-bound math for sizing an id's random field (`calculateRequiredEntropy(1e-9, 1_000_000)` → 69 bits), sanity checks for a byte source, XOR mixing and a Shannon estimate. It runs in browsers as well as Node, and its bit-balance check now scales with input length ([#136](https://github.com/CLDMV/uuid/pull/136), resolves [#135](https://github.com/CLDMV/uuid/issues/135)).
+- **`sha256` in `@cldmv/uuid/hash`**, with a synchronous pure-JS browser build. The main entry is unchanged.
+- [View full v2.1.0 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v2/v2.1.0.md)
 
 ### Recent Releases
 
+- **v2.0.1** (November 2026): one set of detail fields for every UUID, RFC or custom (`null` where a field doesn't apply), `validate()` takes strings, and `UUID.v1()` / `UUID.v6()` write the right time ([#120](https://github.com/CLDMV/uuid/pull/120), fixes [#119](https://github.com/CLDMV/uuid/issues/119), [#123](https://github.com/CLDMV/uuid/issues/123) and [#124](https://github.com/CLDMV/uuid/issues/124)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v2/v2.0.1.md))
 - **v2.0.0** (November 2026): full-range timestamps; `TA()` / `TB()` mint versions 5 and 6, whose byte order follows time, plus `UUID.compare()` and `UUID.migrate()` to versions 5/6. Breaking: the `getTimestamp()` type and byte order against stored 3/4 ids ([#117](https://github.com/CLDMV/uuid/pull/117), fixes [#100](https://github.com/CLDMV/uuid/issues/100)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v2/v2.0.0.md))
 - **v1.5.0** (November 2026): `UUID.entropy()` builds a per-tick counter, seed fingerprint and random bits into the entropy for `TA()` / `TB()` so ids from one instance never repeat in a tick; tests also run against `dist/` ([#103](https://github.com/CLDMV/uuid/pull/103), fixes [#102](https://github.com/CLDMV/uuid/issues/102)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.5.0.md))
 - **v1.4.0** (November 2026): `TA()`/`TB()` ids sort by byte order through timestamp versions 3 and 4, and `UUID.migrate()` rewrites stored legacy ids ([#90](https://github.com/CLDMV/uuid/pull/90), fixes [#89](https://github.com/CLDMV/uuid/issues/89)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.4.0.md))
-- **v1.3.2** (November 2026): tooling only, tests resolve `src/` through `devCondition()` and CI runs `types:check`, no library change ([#91](https://github.com/CLDMV/uuid/pull/91), [#93](https://github.com/CLDMV/uuid/pull/93)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.2.md))
 
 📚 **For complete version history and detailed release notes, see the [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/) folder.**
 
@@ -837,6 +837,39 @@ UUID.OID; // ISO OID namespace
 UUID.X500; // X.500 DN namespace
 ```
 
+### Entropy helpers (`@cldmv/uuid/entropy`)
+
+`EntropySource` is a set of static helpers for sizing and checking the randomness behind ids. It lives on its own subpath, so it stays out of the main bundle. It works on `Uint8Array` (Node `Buffer`s work as inputs) and runs in browsers: bytes come from `@cldmv/uuid/rng` and SHA-256 from `@cldmv/uuid/hash`, both of which have browser variants.
+
+```javascript
+import { EntropySource } from "@cldmv/uuid/entropy";
+
+// Random bits needed for a one-in-a-billion collision chance across a million ids (birthday bound)
+EntropySource.calculateRequiredEntropy(1e-9, 1_000_000); // => 69
+
+const bytes = EntropySource.generateSecureBytes(16); // Uint8Array(16) from the platform CSPRNG
+EntropySource.generateEntropy(130); // 17 bytes: bits rounded up to whole bytes
+
+// Sanity-check a byte source
+const report = EntropySource.validateEntropyQuality(bytes);
+report.passed; // true for a healthy source
+report.tests.bitBalance; // { passed, value, min, max, description }
+```
+
+| Method                                                               | Returns                                                                                                                                                                         |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `generateSecureBytes(byteCount)`                                     | `byteCount` random bytes                                                                                                                                                        |
+| `generateEntropy(bits)`                                              | Random bytes, `bits` rounded up to whole bytes                                                                                                                                  |
+| `calculateRequiredEntropy(probability, count)`                       | Random bits needed to keep the collision chance across `count` ids at or below `probability`                                                                                    |
+| `validateEntropyQuality(bytes)`                                      | A report with four checks: not all zeros, not all ones, set-bit share within 4 standard deviations of 50% (the window narrows as the input grows), no long run of one bit value |
+| `generateValidatedEntropy(byteCount, [maxAttempts=10])`              | Random bytes that pass `validateEntropyQuality`, retrying up to `maxAttempts` times                                                                                             |
+| `mixEntropySources(sources)`                                         | The XOR of the byte arrays, as long as the longest (shorter ones padded with zeros)                                                                                             |
+| `createTimestampIndependentEntropy(timestamp, [additionalBytes=16])` | SHA-256 of the timestamp plus `additionalBytes` fresh random bytes (32 bytes)                                                                                                   |
+| `estimateShannonEntropy(bytes)`                                      | Estimated bits of information from byte-value frequencies                                                                                                                       |
+| `analyzeEntropySource(generator, [sampleCount=100])`                 | Repeated-output and timing warnings for a generator function                                                                                                                    |
+
+`validateEntropyQuality` catches a broken or stuck source; it doesn't prove randomness. A fair source fails it about once in 16,000 checks at any length.
+
 ---
 
 ## 📐 Custom UUID Specification Details
@@ -1194,6 +1227,7 @@ The code lives in `src/`. `npm run build` bundles it with tsup into `dist/`, whi
 - `src/index.cjs` → `dist/index.cjs`: the CommonJS entry, copied verbatim. It `require()`s the sibling `index.mjs`.
 - `src/main.mjs` → `dist/main.mjs`: the deprecated `./main` alias, which imports `./index.mjs`.
 - `src/lib/{rng,bytes,hash}{,-browser}.mjs` → `dist/lib/`: the `./rng`, `./bytes` and `./hash` subpaths.
+- `src/lib/entropy-sources.mjs` → `dist/lib/entropy-sources.mjs`: the `./entropy` subpath, one file for Node and browsers.
 
 `npm run types:build` regenerates the declarations in `types/src/`.
 

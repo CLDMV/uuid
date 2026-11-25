@@ -1,6 +1,6 @@
 {
 	"name": "@cldmv/uuid",
-	"version": "2.0.1",
+	"version": "2.1.0",
 	"description": "Extended RFC 4122 and RFC 9562 UUID implementation with custom variant structures, issuer-based identification, and timestamp variants",
 	"main": "./dist/index.cjs",
 	"module": "./dist/index.mjs",
@@ -59,6 +59,14 @@
 			},
 			"types": "./types/src/lib/hash.d.mts",
 			"import": "./dist/lib/hash.mjs"
+		},
+		"./entropy": {
+			"uuid-dev": {
+				"types": "./types/src/lib/entropy-sources.d.mts",
+				"import": "./src/lib/entropy-sources.mjs"
+			},
+			"types": "./types/src/lib/entropy-sources.d.mts",
+			"import": "./dist/lib/entropy-sources.mjs"
 		},
 		"./package.json": "./package.json"
 	},
