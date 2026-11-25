@@ -622,3 +622,20 @@ describe("Version Comparison", () => {
 		expect(uniqueUuids.size).toBe(6);
 	});
 });
+
+describe("RFC utils edge paths", () => {
+	it("reads the version digit of a valid RFC string", async () => {
+		const { version } = await import("../src/lib/versions/rfc/utils.mjs");
+		expect(version("6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b")).toBe(4);
+		expect(version("not-a-uuid")).toBeNull();
+	});
+
+	it("defaults gregorianTicks to now with no extra intervals", async () => {
+		const { gregorianTicks } = await import("../src/lib/versions/rfc/utils.mjs");
+		const before = gregorianTicks(Date.now());
+		const now = gregorianTicks();
+		expect(now >= before).toBe(true);
+		expect(gregorianTicks(0, 5)).toBe(122192928000000005n);
+		expect(gregorianTicks(0)).toBe(122192928000000000n);
+	});
+});
