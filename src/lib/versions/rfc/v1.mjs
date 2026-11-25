@@ -20,7 +20,7 @@
  */
 
 import { randomBytes } from "@cldmv/uuid/rng";
-import { stringify } from "./utils.mjs";
+import { stringify, gregorianTicks } from "./utils.mjs";
 
 /**
  * Create a version 1 (timestamp) UUID
@@ -37,31 +37,26 @@ export function v1(options = {}) {
 	const buf = options.buf || new Uint8Array(16);
 	const offset = options.offset || 0;
 
-	// Get timestamp
-	let msecs = options.msecs !== undefined ? options.msecs : Date.now();
-	let nsecs = options.nsecs !== undefined ? options.nsecs : 0;
-
-	// UUID epoch is October 15, 1582. Unix epoch is January 1, 1970.
-	// The difference is 12219292800000 milliseconds
-	const UUID_EPOCH_OFFSET = 12219292800000;
-	msecs += UUID_EPOCH_OFFSET;
-
-	// Convert to 100-nanosecond intervals
-	const ticks = msecs * 10000 + nsecs;
+	// 60-bit count of 100-ns intervals since 1582-10-15, computed as a bigint because
+	// it is past 2^53: the number arithmetic this replaced dropped low bits.
+	const ticks = gregorianTicks(options.msecs, options.nsecs);
+	const timeLow = ticks & 0xffffffffn;
+	const timeMid = Number((ticks >> 32n) & 0xffffn);
+	const timeHi = Number((ticks >> 48n) & 0x0fffn);
 
 	// time_low (32 bits)
-	buf[offset] = (ticks >>> 24) & 0xff;
-	buf[offset + 1] = (ticks >>> 16) & 0xff;
-	buf[offset + 2] = (ticks >>> 8) & 0xff;
-	buf[offset + 3] = ticks & 0xff;
+	buf[offset] = Number((timeLow >> 24n) & 0xffn);
+	buf[offset + 1] = Number((timeLow >> 16n) & 0xffn);
+	buf[offset + 2] = Number((timeLow >> 8n) & 0xffn);
+	buf[offset + 3] = Number(timeLow & 0xffn);
 
 	// time_mid (16 bits)
-	buf[offset + 4] = ((ticks / 0x100000000) >>> 8) & 0xff;
-	buf[offset + 5] = (ticks / 0x100000000) & 0xff;
+	buf[offset + 4] = timeMid >>> 8;
+	buf[offset + 5] = timeMid & 0xff;
 
-	// time_hi_and_version (16 bits)
-	buf[offset + 6] = (((ticks / 0x1000000000000) & 0x0f) | 0x10) & 0xff; // version 1
-	buf[offset + 7] = ((ticks / 0x10000000000) >>> 0) & 0xff;
+	// time_hi_and_version (16 bits): version 1 in the top nibble, then time_hi (12 bits)
+	buf[offset + 6] = 0x10 | (timeHi >>> 8);
+	buf[offset + 7] = timeHi & 0xff;
 
 	// clock_seq_hi_and_reserved (8 bits)
 	let clockseq;
