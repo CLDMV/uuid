@@ -33,4 +33,11 @@ export function validate(uuid: string): boolean;
  * version('6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b'); // => 4
  */
 export function version(uuid: string): number | null;
+/**
+ * The 60-bit timestamp of an RFC version 1 or 6 UUID: 100-ns intervals since 1582-10-15.
+ * @param {number} [msecs] - Milliseconds since the Unix epoch (default: now); a fraction is floored
+ * @param {number} [nsecs] - Additional 100-ns intervals (0-9999)
+ * @returns {bigint} Timestamp, masked to 60 bits
+ */
+export function gregorianTicks(msecs?: number, nsecs?: number): bigint;
 //# sourceMappingURL=utils.d.mts.map

@@ -79,8 +79,8 @@ describe("Integration Tests", () => {
 
 		expect(validationA.isValid).toBe(true);
 		expect(validationB.isValid).toBe(true);
-		expect(validationA.fields.issuerCategory).toBe("Category A");
-		expect(validationB.fields.issuerCategory).toBe("Category B");
+		expect(validationA.fields.issuerCategory).toBe("Category A (Well-Recognized Tech Entities)");
+		expect(validationB.fields.issuerCategory).toBe("Category B (Open Source Contributors)");
 
 		const issuerA = registry.getIssuer(categoryAID);
 		const issuerB = registry.getIssuer(categoryBID);

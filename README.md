@@ -14,18 +14,18 @@ The custom variants (`TA`, `TB`, `IA`) live in the variant `111` namespace, so t
 
 ## ✨ What's New
 
-### Latest: v2.0.0 (November 2026)
+### Latest: v2.0.1 (November 2026)
 
-- **Full-range timestamps that sort**: `TA()` / `TB()` take a number, bigint, decimal string or `Date` and hold every whole number in ±(2^69 - 1) exactly, and they now mint timestamp versions 5 and 6, whose byte order follows time across that whole range. Out-of-range input throws instead of wrapping. `getTimestamp()` returns a bigint past ±(2^53 - 1), and `getTimestampBigInt()` is always exact ([#117](https://github.com/CLDMV/uuid/pull/117), fixes [#100](https://github.com/CLDMV/uuid/issues/100)).
-- **`UUID.compare()` and migration**: `UUID.compare` sorts any mix of versions by time, and `UUID.migrate()` rewrites stored version 1-4 ids into 5/6. Breaking: the `getTimestamp()` type, and new ids don't sort with stored 3/4 ids by bytes until those are migrated. See the upgrade notes.
-- [View full v2.0.0 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v2/v2.0.0.md)
+- **One description for every UUID**: `getInfo()`, `validate()` and `validateDetailed()` give RFC and custom ids the same fields, `null` where a field doesn't apply. RFC ids stop getting made-up subvariants and issuer categories, RFC v1/v6/v7 ids report their timestamp (and sort by it in `UUID.compare()`), and `validate()` takes strings ([#120](https://github.com/CLDMV/uuid/pull/120), fixes [#119](https://github.com/CLDMV/uuid/issues/119) and [#123](https://github.com/CLDMV/uuid/issues/123)).
+- **`UUID.v1()` / `UUID.v6()` write the right time**: both produced wrong timestamps and now match the RFC 9562 test vectors (fixes [#124](https://github.com/CLDMV/uuid/issues/124)). Some validator fields are renamed; see the upgrade notes.
+- [View full v2.0.1 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v2/v2.0.1.md)
 
 ### Recent Releases
 
+- **v2.0.0** (November 2026): full-range timestamps; `TA()` / `TB()` mint versions 5 and 6, whose byte order follows time, plus `UUID.compare()` and `UUID.migrate()` to versions 5/6. Breaking: the `getTimestamp()` type and byte order against stored 3/4 ids ([#117](https://github.com/CLDMV/uuid/pull/117), fixes [#100](https://github.com/CLDMV/uuid/issues/100)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v2/v2.0.0.md))
 - **v1.5.0** (November 2026): `UUID.entropy()` builds a per-tick counter, seed fingerprint and random bits into the entropy for `TA()` / `TB()` so ids from one instance never repeat in a tick; tests also run against `dist/` ([#103](https://github.com/CLDMV/uuid/pull/103), fixes [#102](https://github.com/CLDMV/uuid/issues/102)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.5.0.md))
 - **v1.4.0** (November 2026): `TA()`/`TB()` ids sort by byte order through timestamp versions 3 and 4, and `UUID.migrate()` rewrites stored legacy ids ([#90](https://github.com/CLDMV/uuid/pull/90), fixes [#89](https://github.com/CLDMV/uuid/issues/89)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.4.0.md))
 - **v1.3.2** (November 2026): tooling only, tests resolve `src/` through `devCondition()` and CI runs `types:check`, no library change ([#91](https://github.com/CLDMV/uuid/pull/91), [#93](https://github.com/CLDMV/uuid/pull/93)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.2.md))
-- **v1.3.1** (November 2026): `engines.node` is the runtime floor again (`>=16.12.0`); the 22.22.0 toolchain floor moves to `devEngines` ([#85](https://github.com/CLDMV/uuid/pull/85)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.1.md))
 
 📚 **For complete version history and detailed release notes, see the [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/) folder.**
 
@@ -105,27 +105,36 @@ const iaOSS = UUID.IA(300); // Category B (Open Source Ecosystem)
 const info = taUUID.getInfo();
 console.log(info);
 // {
-//   variant: 7,          // bits 64-66: 111 (custom namespace)
-//   subvariant: 0,       // bits 67-68: 00 (Timestamp Variant)
-//   version: 5,          // bits 75-78: 0101 (v5 = seconds, full layout)
-//   timestamp: 1766203054, // signed 70-bit timestamp
-//   isCustomUUID: true,
-//   isTimestampVariant: true,
-//   issuerID: null,      // null for Timestamp Variants
-//   issuerCategory: null
+//   uuid: "80000000-01ac-...",
+//   isUUID: true,              // a well-formed UUID
+//   isCLDMV: true,             // a CLDMV id (bits 64-66 = 111)
+//   variant: 7,
+//   variantFamily: "CLDMV",
+//   subvariant: 0,             // bits 67-68: 00 (Timestamp Variant)
+//   version: 5,                // bits 75-78: 0101 (v5 = seconds, full layout)
+//   fullVersion: "7.0.5",      // variant.subvariant.version
+//   variantIdentifier: "TA",
+//   issuerID: null,            // only Issuer Variants have one
+//   issuerCategory: null,
+//   timestamp: 1766203054,
+//   timestampUnit: "s",
+//   date: "2025-12-20T03:57:34.000Z",
+//   isIssuerVariant: false,
+//   isTimestampVariant: true
 // }
 
 const iaInfo = iaUUID.getInfo();
 console.log(iaInfo);
 // {
-//   variant: 7,          // bits 64-66: 111 (custom namespace)
-//   subvariant: 1,       // bits 67-68: 01 (Issuer Variant)
-//   version: 1,          // bits 75-78: 0001
-//   issuerID: 404,       // bits 79-88: 10-bit issuer ID
+//   ...same keys,
+//   subvariant: 1,             // bits 67-68: 01 (Issuer Variant)
+//   version: 1,
+//   variantIdentifier: "IA",
+//   issuerID: 404,             // bits 79-88: 10-bit issuer ID
 //   issuerCategory: "Spec Originator",
-//   isCustomUUID: true,
+//   timestamp: null, timestampUnit: null, date: null,
 //   isIssuerVariant: true,
-//   timestamp: null      // null for Issuer Variants
+//   isTimestampVariant: false
 // }
 ```
 
@@ -189,6 +198,8 @@ The UUID class implements `valueOf()`, `Symbol.toPrimitive`, and `toJSON()` to e
 ---
 
 ## 📘 API Reference
+
+📋 **[UUID detail reference](https://cldmv.github.io/uuid/)** ([Markdown version](https://github.com/CLDMV/uuid/blob/master/docs/reference/uuid-details.md)): what `getInfo()`, the instance and static methods, `validate()` and `validateDetailed()` return for one id of every RFC version, the Nil, Max and Microsoft ids, and each kind of CLDMV id.
 
 ### Custom UUID Specification Methods
 
@@ -440,38 +451,42 @@ JSON.stringify(obj);
 
 ##### `uuid.getInfo()`
 
-Get complete specification-compliant information about the UUID.
+Describes any UUID, CLDMV or RFC, with the same fields. The [UUID detail reference](https://cldmv.github.io/uuid/) ([Markdown](https://github.com/CLDMV/uuid/blob/master/docs/reference/uuid-details.md)) shows the full output for every kind of id. A field the id's variant doesn't define is `null`. `fullVersion` is `variant.subvariant.version` as numbers, with 0 for a part the id doesn't have; it identifies the kind of id and isn't meant to be compared like a semver version.
+
+| Field                                   | CLDMV id (variant `111`)                                               | RFC 4122/9562 id                                                                                                                           |
+| --------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `uuid`                                  | canonical string                                                       | canonical string                                                                                                                           |
+| `isUUID`                                | `true`                                                                 | `true` for version 1-8, Nil and Max; NCS, Microsoft and RFC-variant ids with version 0 or 9-15 are `false`                                 |
+| `isCLDMV`                               | `true`                                                                 | `false`                                                                                                                                    |
+| `variant`                               | `7` (prefix `111`)                                                     | `2` (prefix `10`), Nil and Max included; Microsoft `6`, NCS `0`. `getVariant()` returns the raw bits 64-66, which read 4 or 5 on an RFC id |
+| `variantFamily`                         | `"CLDMV"`                                                              | `"RFC 4122/9562"` (Nil and Max included); other ids are `"NCS"` or `"Microsoft"`                                                           |
+| `subvariant`                            | bits 67-68                                                             | `null`                                                                                                                                     |
+| `version`                               | bits 75-78                                                             | bits 48-51, the RFC version                                                                                                                |
+| `fullVersion`                           | `"7.<subvariant>.<version>"`: TA `"7.0.5"`, TB `"7.0.6"`, IA `"7.1.1"` | `"2.0.<version>"`: v4 `"2.0.4"`, Nil `"2.0.0"`, Max `"2.0.15"`; Microsoft `"6.0.0"`, NCS `"0.0.0"`                                         |
+| `variantIdentifier`                     | `"TA"`, `"TB"`, `"IA"`, ...                                            | the RFC version (Nil `0`, Max `15`)                                                                                                        |
+| `issuerID`, `issuerCategory`            | Issuer Variant only                                                    | `null`                                                                                                                                     |
+| `timestamp`                             | TA: seconds, TB: milliseconds                                          | v7: milliseconds, v1 and v6: 100-ns intervals, all on the Unix epoch; other versions `null`                                                |
+| `timestampUnit`                         | `"s"` or `"ms"`                                                        | `"ms"` or `"100ns"`                                                                                                                        |
+| `date`                                  | ISO 8601 date of `timestamp`                                           | ISO 8601 date of `timestamp`                                                                                                               |
+| `isIssuerVariant`, `isTimestampVariant` | by subvariant                                                          | `false`                                                                                                                                    |
 
 ```javascript
-const info = uuid.getInfo();
-// For Timestamp Variant (TA/TB):
-// {
-//   variant: 7,              // bits 64-66
-//   subvariant: 0,           // bits 67-68
-//   version: 1,              // bits 75-78
-//   timestamp: 1766203054,   // signed 70-bit value
-//   isCustomUUID: true,
-//   isTimestampVariant: true,
-//   issuerID: null,
-//   issuerCategory: null
-// }
+UUID.TB(1700000000000).getInfo();
+// { uuid: "80000006-2f3f-...", isUUID: true, isCLDMV: true, variant: 7, variantFamily: "CLDMV", subvariant: 0, version: 6, fullVersion: "7.0.6",
+//   variantIdentifier: "TB", issuerID: null, issuerCategory: null, timestamp: 1700000000000, timestampUnit: "ms",
+//   date: "2023-11-14T22:13:20.000Z", isIssuerVariant: false, isTimestampVariant: true }
 
-// For Issuer Variant (IA):
-// {
-//   variant: 7,              // bits 64-66
-//   subvariant: 1,           // bits 67-68
-//   version: 1,              // bits 75-78
-//   issuerID: 404,           // bits 79-88
-//   issuerCategory: "Spec Originator",
-//   isCustomUUID: true,
-//   isIssuerVariant: true,
-//   timestamp: null
-// }
+new UUID("017f22e2-79b0-7cc3-98c4-dc0c0c07398f").getInfo(); // RFC v7
+// { uuid: "017f22e2-...", isUUID: true, isCLDMV: false, variant: 2, variantFamily: "RFC 4122/9562", subvariant: null, version: 7, fullVersion: "2.0.7",
+//   variantIdentifier: 7, issuerID: null, issuerCategory: null, timestamp: 1645557742000, timestampUnit: "ms",
+//   date: "2022-02-22T19:22:22.000Z", isIssuerVariant: false, isTimestampVariant: false }
 ```
+
+`timestamp` is a number while it is a safe integer and an exact bigint past ±(2^53 - 1). v1 and v6 timestamps are always bigints, since a count of 100-ns intervals is past 2^53.
 
 ##### `uuid.getVariant()`
 
-Get variant value (bits 64-66). Returns `7` (binary `111`) for custom UUIDs.
+Get variant value (bits 64-66). Returns `7` (binary `111`) for custom UUIDs and `4` or `5` for RFC UUIDs. `getVariant()`, `getSubvariant()` and `getVersion()` read their bit positions on any id; use `getInfo()` for fields that depend on the variant.
 
 ```javascript
 const variant = uuid.getVariant(); // => 7
@@ -499,7 +514,7 @@ const version = uuid.getVersion();
 
 ##### `uuid.getTimestamp()`
 
-Extract timestamp from Timestamp Variants. Returns `null` for Issuer Variants.
+The timestamp a UUID holds, on the Unix epoch in the id's own unit: seconds for TA, milliseconds for TB and RFC v7, 100-ns intervals for RFC v1 and v6. Returns `null` for ids without one (Issuer Variants, RFC v3, v4, v5 and v8). `getTimestampUnit()` gives the unit.
 
 ```javascript
 const ta = UUID.TA(1766203054); // Seconds
@@ -513,13 +528,16 @@ const timestamp3 = ia.getTimestamp(); // => null (Issuer Variant)
 
 const far = UUID.TB(2n ** 60n);
 const timestamp4 = far.getTimestamp(); // => 1152921504606846976n (a bigint past ±(2^53 - 1))
+
+new UUID("017f22e2-79b0-7cc3-98c4-dc0c0c07398f").getTimestamp(); // => 1645557742000 (RFC v7, milliseconds)
+new UUID("c232ab00-9414-11ec-b3c8-9f6bdeced846").getTimestamp(); // => 16455577420000000n (RFC v1, 100-ns intervals)
 ```
 
 Returns a number while the value is a safe integer and an exact bigint past ±(2^53 - 1) (see [Timestamp range and inputs](#timestamp-range-and-inputs)).
 
 ##### `uuid.getTimestampBigInt()`
 
-The timestamp as a bigint, exact across the whole 70-bit range. Returns `null` for Issuer Variants. Use it where code wants one type for every value.
+The timestamp as a bigint, exact across the whole range. Returns `null` for ids without a timestamp. Use it where code wants one type for every value.
 
 ```javascript
 UUID.TB(1766203054902).getTimestampBigInt(); // => 1766203054902n
@@ -527,9 +545,13 @@ UUID.TB(-(2n ** 69n - 1n)).getTimestampBigInt(); // => -590295810358705651711n
 UUID.IA(404).getTimestampBigInt(); // => null
 ```
 
+##### `uuid.getTimestampUnit()`
+
+The unit of `getTimestamp()`: `"s"` for TA, `"ms"` for TB and RFC v7, `"100ns"` for RFC v1 and v6, `null` for ids without a timestamp.
+
 ##### `uuid.getIssuerID()`
 
-Get issuer ID from Issuer Variants (bits 79-88). Returns `null` for Timestamp Variants.
+Get issuer ID from Issuer Variants (bits 79-88). Returns `null` for every other id: Timestamp Variants, reserved subvariants and RFC ids.
 
 ```javascript
 const ia = UUID.IA(404);
@@ -541,22 +563,33 @@ const issuerID2 = ta.getIssuerID(); // => null (Timestamp Variant)
 
 ##### `uuid.getIssuerCategory()`
 
-Get human-readable issuer category. Returns `null` for Timestamp Variants.
+Get human-readable issuer category. Returns `null` for every id that isn't an Issuer Variant.
 
 ```javascript
 const ia = UUID.IA(404);
 const category = ia.getIssuerCategory(); // => "Spec Originator"
 
 const ia2 = UUID.IA(100);
-const category2 = ia2.getIssuerCategory(); // => "Category A: Well-Recognized Technology Entities"
+const category2 = ia2.getIssuerCategory(); // => "Category A (Well-Recognized Tech Entities)"
 ```
 
-##### `uuid.isCustomUUID()`
+##### `uuid.isUUID()`
 
-Check if UUID uses the custom variant (111).
+Check if the id is a well-formed UUID: an RFC 4122/9562 id with a defined version (1-8), the RFC Nil or Max id, or a CLDMV id. NCS and Microsoft ids, and RFC-variant ids with version 0 or 9-15, return `false`.
 
 ```javascript
-const isCustom = uuid.isCustomUUID(); // => true
+UUID.TA().isUUID(); // => true
+new UUID(UUID.v4()).isUUID(); // => true
+new UUID("00000000-0000-0000-c000-000000000046").isUUID(); // => false (Microsoft variant)
+```
+
+##### `uuid.isCLDMV()`
+
+Check if the id is a CLDMV id: variant bits 64-66 are `111` (TA, TB, IA or a reserved subvariant). The RFC Max id, whose bits are all ones, is an RFC id and returns `false`.
+
+```javascript
+UUID.TA().isCLDMV(); // => true
+new UUID(UUID.v4()).isCLDMV(); // => false
 ```
 
 ##### `uuid.isTimestampVariant()`
@@ -623,14 +656,27 @@ Rewrites a timestamp id in an older layout (versions 1-4) into the full layout (
 
 Compares two UUIDs by time, for `Array.prototype.sort`. `a` and `b` are each a `UUID`, a UUID string or a 16-byte buffer. Returns `-1`, `0` or `1`.
 
-- Timestamp Variant ids (versions 1-6) come first, ordered by the time they hold, exactly across the whole ±(2^69 - 1). Seconds and milliseconds go on one scale: a TA id stands for the start of its second.
-- Ids with equal times, and every other UUID (RFC UUIDs, Issuer Variants, which come after all timestamp ids), are ordered by their bytes.
+- Ids that hold a timestamp come first, ordered by that time, exactly across the whole ±(2^69 - 1): TA and TB ids (versions 1-6) and RFC v1, v6 and v7 ids. Seconds, milliseconds and 100-ns intervals go on one scale: a TA id stands for the start of its second.
+- Ids with equal times, and every other UUID (RFC v3, v4, v5 and v8, Issuer Variants, which come after all timestamp ids), are ordered by their bytes.
 
-Byte order already follows time for TA and TB ids (versions 5 and 6). Use `compare` for ids byte order can't sort: a mix of versions (3/4 next to 5/6, or 1/2), TA next to TB, or version 3/4 ids past ±(2^63 - 1).
+Byte order already follows time for TA and TB ids (versions 5 and 6). Use `compare` for ids byte order can't sort: a mix of versions (3/4 next to 5/6, or 1/2), TA next to TB, version 3/4 ids past ±(2^63 - 1), or custom and RFC ids together.
 
 ```javascript
 const ids = [UUID.TB(2000), UUID.timestamp(1000, 4), UUID.TA(0)];
 ids.sort(UUID.compare).map((id) => id.getVersion()); // => [5, 4, 6]
+```
+
+##### `UUID.validate(uuid)` / `UUID.validateDetailed(uuid)`
+
+Check a UUID against the specification. Both are async and take a UUID string, a `UUID` or 16 bytes.
+
+`validate()` resolves to `{ isValid, isUUID, isCLDMV, errors, warnings, fields }`. `fields` has the same keys for every id: the `getInfo()` fields (with `timestamp` as a bigint, without `uuid`) plus the raw Timestamp Variant bit fields `timestampLayout` (`"full"`, `"ordered"` or `"legacy"`), `timestampSign`, `timestampSegmentA` (bits 1-63), `timestampContinuation` (bits 69-74) and `timestampMagnitude`, and `isImmutableReserved` for issuer IDs 0, 1 and 404. Fields that don't apply are `null`. Errors come from a CLDMV id that breaks the specification; warnings flag a reserved subvariant, an issuer ID in the future RFC range (512-1023) or poor entropy.
+
+`validateDetailed()` adds `sections.bitLayout` (`variant`, `subvariant`, `version`, `issuerID`, `timestampSign`, `timestampSegmentA`, `timestampContinuation`, again `null` where they don't apply) and `sections.entropy`: `entropyBits` counts the random bits (49 for TA/TB, 109 for IA, 122 for RFC v4, 74 for RFC v7, `null` where there is no random field) and `analysis.bitBalance` is the share of them set to 1.
+
+```javascript
+const { isValid, fields } = await UUID.validate("8000018b-cfe5-6800-e009-c289f23865d3");
+// isValid: true, fields.variantIdentifier: "TB", fields.timestamp: 1700000000000n, fields.timestampLayout: "ordered"
 ```
 
 #### Static Detection Methods
@@ -1234,6 +1280,11 @@ The complete formal specification is available in [uuid-spec.md](https://github.
 - Version numbering conventions
 - Collision resistance proofs
 - RFC submission rationale
+
+### UUID detail reference
+
+- **[UUID detail reference](https://cldmv.github.io/uuid/)**: every detail method's output for each kind of id, generated from the library (`npm run docs:build`) and published with each release
+- **[UUID detail reference, Markdown](https://github.com/CLDMV/uuid/blob/master/docs/reference/uuid-details.md)**: the same reference as a page in the repository (`npm run docs:details`)
 
 ### Changelog
 

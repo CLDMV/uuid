@@ -20,7 +20,15 @@
  * All validations reference specific bit positions and specification requirements.
  */
 
-import { VARIANT_BITS, SUBVARIANT_TIMESTAMP, SUBVARIANT_ISSUER, ISSUER_CATEGORIES, ISSUER_ID_MASK, timestampLayout } from "./constants.mjs";
+import {
+	SUBVARIANT_TIMESTAMP,
+	SUBVARIANT_ISSUER,
+	ISSUER_CATEGORIES,
+	ISSUER_ID_MASK,
+	timestampLayout,
+	issuerCategoryName
+} from "./constants.mjs";
+import { describeBytes, classify, RFC_FAMILY } from "./describe.mjs";
 import { BitUtils } from "./bit-utils.mjs";
 import { readStoredMagnitude, TIMESTAMP_MAX_MAGNITUDE } from "./timestamp.mjs";
 import { toHex } from "@cldmv/uuid/bytes";
@@ -30,7 +38,9 @@ import { toHex } from "@cldmv/uuid/bytes";
  */
 class UUIDValidator {
 	/**
-	 * Validate complete UUID compliance with custom specification
+	 * Validate a UUID against the specification and describe it. `fields` has the same keys
+	 * for every UUID, CLDMV or RFC: the {@link UUID#getInfo} fields (with `timestamp` as a
+	 * bigint) plus the raw timestamp-variant bit fields, each null when it doesn't apply.
 	 * @param {Uint8Array} uuidBuffer - 16-byte UUID buffer
 	 * @returns {Object} Validation results
 	 */
@@ -42,21 +52,27 @@ class UUIDValidator {
 		const results = {
 			isValid: true,
 			isUUID: false,
+			isCLDMV: false,
 			errors: [],
 			warnings: [],
 			fields: {}
 		};
 
 		try {
-			// Extract and validate variant (bits 64-66)
-			const variant = BitUtils.getBitsAsNumber(uuidBuffer, 64, 3);
-			results.fields.variant = variant;
+			results.fields = {
+				...describeBytes(uuidBuffer),
+				timestampLayout: null,
+				timestampSign: null,
+				timestampSegmentA: null,
+				timestampContinuation: null,
+				timestampMagnitude: null,
+				isImmutableReserved: false
+			};
+			results.isUUID = results.fields.isUUID;
+			results.isCLDMV = results.fields.isCLDMV;
 
-			if (variant === VARIANT_BITS) {
-				results.isUUID = true;
+			if (results.isCLDMV) {
 				UUIDValidator._validateUUIDFields(uuidBuffer, results);
-			} else {
-				results.warnings.push(`Not a valid UUID (variant=${variant}, expected=${VARIANT_BITS})`);
 			}
 		} catch (error) {
 			results.isValid = false;
@@ -68,123 +84,80 @@ class UUIDValidator {
 	}
 
 	/**
-	 * Validate UUID specific fields
+	 * Check the CLDMV fields
 	 * @param {Uint8Array} uuidBuffer - UUID buffer
 	 * @param {Object} results - Results object to populate
 	 * @private
 	 */
 	static _validateUUIDFields(uuidBuffer, results) {
-		// Validate subvariant (bits 67-68)
+		// Subvariant (bits 67-68) and version (bits 75-78), read again so their range is checked
 		const subvariant = BitUtils.getBitsAsNumber(uuidBuffer, 67, 2);
-		results.fields.subvariant = subvariant;
-
 		const validSubvariants = [SUBVARIANT_TIMESTAMP, SUBVARIANT_ISSUER, 0b10, 0b11];
 		if (!validSubvariants.includes(subvariant)) {
 			results.errors.push(`Invalid subvariant: ${subvariant}`);
 		}
 
-		// Validate version (bits 75-78)
 		const version = BitUtils.getBitsAsNumber(uuidBuffer, 75, 4);
-		results.fields.version = version;
-
 		if (version < 0 || version > 15) {
 			results.errors.push(`Invalid version: ${version} (must be 0-15)`);
 		}
 
-		// Validate issuer ID (bits 79-88) - only for Issuer Variant
-		if (subvariant === SUBVARIANT_ISSUER) {
-			const issuerID = BitUtils.getBitsAsNumber(uuidBuffer, 79, 10);
-			results.fields.issuerID = issuerID;
-
-			if (issuerID < 0 || issuerID > ISSUER_ID_MASK) {
-				results.errors.push(`Invalid issuer ID: ${issuerID} (must be 0-${ISSUER_ID_MASK})`);
-			}
-		}
-
-		// Subvariant-specific validation
 		if (subvariant === SUBVARIANT_ISSUER) {
 			UUIDValidator._validateIssuerVariant(uuidBuffer, results);
 		} else if (subvariant === SUBVARIANT_TIMESTAMP) {
-			UUIDValidator._validateTimestampVariant(uuidBuffer, results);
+			UUIDValidator._validateTimestampVariant(uuidBuffer, results, version);
 		} else if (subvariant === 0b10 || subvariant === 0b11) {
 			results.warnings.push(`Subvariant ${subvariant.toString(2).padStart(2, "0")} is reserved`);
 		}
 	}
 
 	/**
-	 * Validate issuer variant specific requirements
+	 * Check issuer-variant requirements
 	 * @param {Uint8Array} uuidBuffer - UUID buffer
 	 * @param {Object} results - Results object to populate
 	 * @private
 	 */
 	static _validateIssuerVariant(uuidBuffer, results) {
-		const issuerID = results.fields.issuerID;
-
-		// Validate issuer ID category
-		const category = UUIDValidator.getIssuerCategory(issuerID);
-		results.fields.issuerCategory = category;
-
-		// Check for immutable reserved IDs
-		const immutableIDs = [ISSUER_CATEGORIES.UNASSIGNED, ISSUER_CATEGORIES.DRAFTER_RESERVED, ISSUER_CATEGORIES.SPEC_ORIGINATOR];
-
-		if (immutableIDs.includes(issuerID)) {
-			results.fields.isImmutableReserved = true;
+		const issuerID = BitUtils.getBitsAsNumber(uuidBuffer, 79, 10);
+		if (issuerID < 0 || issuerID > ISSUER_ID_MASK) {
+			results.errors.push(`Invalid issuer ID: ${issuerID} (must be 0-${ISSUER_ID_MASK})`);
 		}
 
-		// Validate category ranges
-		if (issuerID >= ISSUER_CATEGORIES.CATEGORY_A_START && issuerID <= ISSUER_CATEGORIES.CATEGORY_A_END) {
-			results.fields.categoryValidation = "Category A (Well-Recognized Tech Entities)";
-		} else if (issuerID >= ISSUER_CATEGORIES.CATEGORY_B_START && issuerID <= ISSUER_CATEGORIES.CATEGORY_B_END) {
-			results.fields.categoryValidation = "Category B (Open Source Contributors)";
-		} else if (issuerID >= ISSUER_CATEGORIES.FUTURE_RFC_START && issuerID <= ISSUER_CATEGORIES.FUTURE_RFC_END) {
-			results.fields.categoryValidation = "Future RFC Expansion";
+		const immutableIDs = [ISSUER_CATEGORIES.UNASSIGNED, ISSUER_CATEGORIES.DRAFTER_RESERVED, ISSUER_CATEGORIES.SPEC_ORIGINATOR];
+		results.fields.isImmutableReserved = immutableIDs.includes(issuerID);
+
+		if (issuerID >= ISSUER_CATEGORIES.RFC_EXPANSION_START && issuerID <= ISSUER_CATEGORIES.RFC_EXPANSION_END) {
 			results.warnings.push(`Issuer ID ${issuerID} is in future RFC expansion range`);
 		}
 	}
 
 	/**
-	 * Validate timestamp variant specific requirements
+	 * Record the raw timestamp-variant bit fields
 	 * @param {Uint8Array} uuidBuffer - UUID buffer
 	 * @param {Object} results - Results object to populate
+	 * @param {number} version - Bits 75-78
 	 * @private
 	 */
-	static _validateTimestampVariant(uuidBuffer, results) {
-		// Validate 70-bit signed timestamp layout per spec
-
-		// Check sign bit (bit 0)
-		const signBit = BitUtils.getBitsAsNumber(uuidBuffer, 0, 1);
-		results.fields.timestampSign = signBit;
-
-		// Extract the raw segment A bits (bits 1-63), exactly as stored
-		const lower63 = BitUtils.getBits(uuidBuffer, 1, 63);
-		results.fields.timestampLower63 = lower63;
-
-		// Extract the raw bits 69-74 (timestamp continuation), exactly as stored
-		const timestampContinuation = BitUtils.getBitsAsNumber(uuidBuffer, 69, 6);
-		results.fields.timestampContinuation = timestampContinuation;
-
-		// Bit 69 is a magnitude bit, not a reserved bit: in versions 1-4 it is
-		// magnitude bit 68, set for every negative timestamp (stored as
-		// (2^69 - 1) - |t|) and for positive ones from 2^68 up; in versions 5
-		// and 6 it is magnitude bit 5. It carries no warning. The field stays for
-		// callers that read it.
-		results.fields.reservedBit69 = BitUtils.getBitsAsNumber(uuidBuffer, 69, 1);
-
-		// Reassemble the 69-bit stored magnitude in the version's layout:
-		// "full" (5, 6), "ordered" (3, 4) or "legacy" (1, 2 and any other version)
-		const magnitude = readStoredMagnitude(uuidBuffer, timestampLayout(results.fields.version));
+	static _validateTimestampVariant(uuidBuffer, results, version) {
+		const layout = timestampLayout(version);
+		results.fields.timestampLayout = layout;
+		// Sign bit (bit 0): 1 = positive, 0 = negative
+		results.fields.timestampSign = BitUtils.getBitsAsNumber(uuidBuffer, 0, 1);
+		// Raw bits 1-63 (rest of segment A) and 69-74 (continuation), exactly as stored. Which
+		// magnitude bits they hold depends on the layout: in "full" (versions 5, 6) bits 1-63
+		// are the upper 63 magnitude bits and bits 69-74 the lowest 6.
+		results.fields.timestampSegmentA = BitUtils.getBits(uuidBuffer, 1, 63);
+		results.fields.timestampContinuation = BitUtils.getBitsAsNumber(uuidBuffer, 69, 6);
+		// The 69-bit stored magnitude; negative timestamps store (2^69 - 1) - |t|
+		const magnitude = readStoredMagnitude(uuidBuffer, layout);
 		results.fields.timestampMagnitude = magnitude;
-
-		// Negative ordering rule: stored = (2^69 - 1) - |t|
-		results.fields.actualTimestamp = signBit === 0 ? magnitude - TIMESTAMP_MAX_MAGNITUDE : magnitude;
-
-		// Note: Bits 64-68 contain variant (64-66) and subvariant (67-68)
-		// These overlap with what would be timestamp bits in a pure 70-bit layout
-		// This is expected per the specification
+		results.fields.timestamp = results.fields.timestampSign === 0 ? magnitude - TIMESTAMP_MAX_MAGNITUDE : magnitude;
 	}
 
 	/**
-	 * Validate bit layout compliance
+	 * Read the bit fields. `bitFields` has the same keys for every UUID, each null when the
+	 * UUID's variant doesn't define it; `version` is bits 75-78 for a CLDMV id and bits
+	 * 48-51 for an RFC UUID.
 	 * @param {Uint8Array} uuidBuffer - UUID buffer
 	 * @returns {Object} Bit layout validation results
 	 */
@@ -192,42 +165,48 @@ class UUIDValidator {
 		const results = {
 			isValid: true,
 			errors: [],
-			bitFields: {}
+			bitFields: {
+				variant: null,
+				subvariant: null,
+				version: null,
+				issuerID: null,
+				timestampSign: null,
+				timestampSegmentA: null,
+				timestampContinuation: null
+			}
 		};
+		const bits = results.bitFields;
 
 		try {
-			// Extract bit fields manually to handle large values
-			results.bitFields.timestampSign = BitUtils.getBitsAsNumber(uuidBuffer, 0, 1);
-			results.bitFields.timestampLower63 = BitUtils.getBits(uuidBuffer, 1, 63); // Use getBits for >32 bits
-			results.bitFields.variant = BitUtils.getBitsAsNumber(uuidBuffer, 64, 3);
-			results.bitFields.subvariant = BitUtils.getBitsAsNumber(uuidBuffer, 67, 2);
-			results.bitFields.timestampContinuation = BitUtils.getBitsAsNumber(uuidBuffer, 69, 6);
-			results.bitFields.version = BitUtils.getBitsAsNumber(uuidBuffer, 75, 4);
-			results.bitFields.issuerID = BitUtils.getBitsAsNumber(uuidBuffer, 79, 10);
+			const { variant, family, isCLDMV, special } = classify(uuidBuffer);
+			bits.variant = variant;
 
-			// Validate that immutable field positions are consistent
-			const variant = results.bitFields.variant;
-			const subvariant = results.bitFields.subvariant;
-			const version = results.bitFields.version;
-			const issuerID = results.bitFields.issuerID;
+			if (isCLDMV) {
+				const subvariant = BitUtils.getBitsAsNumber(uuidBuffer, 67, 2);
+				const version = BitUtils.getBitsAsNumber(uuidBuffer, 75, 4);
+				bits.subvariant = subvariant;
+				bits.version = version;
 
-			// Check immutable field constraints
-			if (variant === VARIANT_BITS) {
-				// This is a custom UUID, validate immutable fields
 				if (subvariant < 0 || subvariant > 3) {
 					results.errors.push(`Subvariant ${subvariant} out of valid range (0-3)`);
 				}
-
 				if (version < 0 || version > 15) {
 					results.errors.push(`Version ${version} out of valid range (0-15)`);
 				}
 
-				// Only validate issuer ID for Issuer Variant (subvariant = 01)
-				if (subvariant === SUBVARIANT_ISSUER) {
+				if (subvariant === SUBVARIANT_TIMESTAMP) {
+					bits.timestampSign = BitUtils.getBitsAsNumber(uuidBuffer, 0, 1);
+					bits.timestampSegmentA = BitUtils.getBits(uuidBuffer, 1, 63); // getBits for >32 bits
+					bits.timestampContinuation = BitUtils.getBitsAsNumber(uuidBuffer, 69, 6);
+				} else if (subvariant === SUBVARIANT_ISSUER) {
+					const issuerID = BitUtils.getBitsAsNumber(uuidBuffer, 79, 10);
+					bits.issuerID = issuerID;
 					if (issuerID < 0 || issuerID > ISSUER_ID_MASK) {
 						results.errors.push(`Issuer ID ${issuerID} out of valid range (0-${ISSUER_ID_MASK})`);
 					}
 				}
+			} else if (family === RFC_FAMILY || special) {
+				bits.version = BitUtils.getBitsAsNumber(uuidBuffer, 48, 4);
 			}
 		} catch (error) {
 			results.isValid = false;
@@ -239,107 +218,106 @@ class UUIDValidator {
 	}
 
 	/**
-	 * Validate entropy distribution in non-immutable fields
+	 * The bit ranges that hold random data in a UUID, by variant:
+	 * - Timestamp Variant: bits 79-127 (49 bits)
+	 * - Issuer Variant: bits 0-63, 69-74 and 89-127 (109 bits), as this library fills them
+	 * - RFC version 4: every bit except the version (48-51) and variant (64-65), 122 bits
+	 * - RFC version 7: rand_a (52-63) and rand_b (66-127), 74 bits
+	 * Other UUIDs (RFC versions 1, 3, 5, 6 and 8, Nil, Max, NCS, Microsoft, reserved
+	 * subvariants) have no random field this library can identify.
 	 * @param {Uint8Array} uuidBuffer - UUID buffer
-	 * @returns {Object} Entropy validation results
+	 * @returns {Array<{start: number, length: number}>|null} Bit ranges, or null when there is none
+	 * @private
+	 */
+	static _entropyRanges(uuidBuffer) {
+		const { family, isCLDMV, special } = classify(uuidBuffer);
+		if (isCLDMV) {
+			const subvariant = BitUtils.getBitsAsNumber(uuidBuffer, 67, 2);
+			if (subvariant === SUBVARIANT_TIMESTAMP) {
+				return [{ start: 79, length: 49 }];
+			}
+			if (subvariant === SUBVARIANT_ISSUER) {
+				return [
+					{ start: 0, length: 64 },
+					{ start: 69, length: 6 },
+					{ start: 89, length: 39 }
+				];
+			}
+			return null;
+		}
+		if (family === RFC_FAMILY && !special) {
+			const rfcVersion = BitUtils.getBitsAsNumber(uuidBuffer, 48, 4);
+			if (rfcVersion === 4) {
+				return [
+					{ start: 0, length: 48 },
+					{ start: 52, length: 12 },
+					{ start: 66, length: 62 }
+				];
+			}
+			if (rfcVersion === 7) {
+				return [
+					{ start: 52, length: 12 },
+					{ start: 66, length: 62 }
+				];
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Analyze the random bits of a UUID. The keys are the same for every UUID;
+	 * `entropyBits` and `analysis.bitBalance` are null when it has no random field.
+	 * @param {Uint8Array} uuidBuffer - UUID buffer
+	 * @returns {Object} Entropy analysis results
 	 */
 	static validateEntropy(uuidBuffer) {
 		const results = {
 			isValid: true,
-			entropyBits: 0,
+			entropyBits: null,
 			warnings: [],
-			analysis: {}
+			analysis: { bitBalance: null }
 		};
 
-		// Create mask for immutable fields
-		const immutableMask = new Uint8Array(16);
-
-		// Mark immutable bits (these should not contribute to entropy analysis)
-		const immutableFields = [
-			{ start: 64, length: 3 }, // variant
-			{ start: 67, length: 2 }, // subvariant
-			{ start: 75, length: 4 }, // version
-			{ start: 79, length: 10 } // issuer ID (bits 79-88)
-		];
-
-		for (const field of immutableFields) {
-			for (let i = 0; i < field.length; i++) {
-				const bitPos = field.start + i;
-				const byteIndex = Math.floor(bitPos / 8);
-				const bitInByte = 7 - (bitPos % 8);
-				immutableMask[byteIndex] |= 1 << bitInByte;
-			}
+		const ranges = UUIDValidator._entropyRanges(uuidBuffer);
+		if (!ranges) {
+			return results;
 		}
 
-		// Extract entropy bits (non-immutable bits)
-		const entropyBuffer = new Uint8Array(uuidBuffer);
-		for (let i = 0; i < 16; i++) {
-			entropyBuffer[i] &= ~immutableMask[i]; // Clear immutable bits
-		}
-
-		// Count available entropy bits
-		let availableEntropyBits = 128; // Total bits
-		for (const field of immutableFields) {
-			availableEntropyBits -= field.length;
-		}
-
-		results.entropyBits = availableEntropyBits;
-
-		// Analyze entropy quality in remaining bits
 		let setBits = 0;
 		let totalBits = 0;
-
-		for (let i = 0; i < 16; i++) {
-			for (let bit = 0; bit < 8; bit++) {
-				const isImmutable = (immutableMask[i] >> (7 - bit)) & 1;
-
-				if (!isImmutable) {
-					totalBits++;
-					const bitValue = (uuidBuffer[i] >> (7 - bit)) & 1;
-					if (bitValue) setBits++;
-				}
+		for (const range of ranges) {
+			for (let bit = range.start; bit < range.start + range.length; bit++) {
+				totalBits++;
+				if ((uuidBuffer[bit >> 3] >> (7 - (bit & 7))) & 1) setBits++;
 			}
 		}
+		results.entropyBits = totalBits;
 
-		if (totalBits > 0) {
-			const balance = setBits / totalBits;
-			results.analysis.bitBalance = balance;
+		const balance = setBits / totalBits;
+		results.analysis.bitBalance = balance;
 
-			// Check for poor entropy (too many 0s or 1s)
-			if (balance < 0.3 || balance > 0.7) {
-				results.warnings.push(`Poor bit balance in entropy fields: ${(balance * 100).toFixed(1)}%`);
-			}
+		// Check for poor entropy (too many 0s or 1s)
+		if (balance < 0.3 || balance > 0.7) {
+			results.warnings.push(`Poor bit balance in entropy fields: ${(balance * 100).toFixed(1)}%`);
+		}
 
-			// Check for all zeros or all ones in entropy fields
-			if (setBits === 0) {
-				results.warnings.push("All entropy bits are zero");
-			} else if (setBits === totalBits) {
-				results.warnings.push("All entropy bits are one");
-			}
+		// Check for all zeros or all ones in entropy fields
+		if (setBits === 0) {
+			results.warnings.push("All entropy bits are zero");
+		} else if (setBits === totalBits) {
+			results.warnings.push("All entropy bits are one");
 		}
 
 		return results;
 	}
 
 	/**
-	 * Get issuer category name from issuer ID
+	 * Get issuer category for an issuer ID
 	 * @param {number} issuerID - Issuer ID
-	 * @returns {string} Category name
+	 * @returns {string} Category name, the same one uuid.getIssuerCategory() returns
 	 */
 	static getIssuerCategory(issuerID) {
-		if (issuerID === ISSUER_CATEGORIES.UNASSIGNED) return "Unassigned";
-		if (issuerID === ISSUER_CATEGORIES.DRAFTER_RESERVED) return "Drafter Reserved";
-		if (issuerID === ISSUER_CATEGORIES.SPEC_ORIGINATOR) return "Spec Originator";
-		if (issuerID >= ISSUER_CATEGORIES.CATEGORY_A_START && issuerID <= ISSUER_CATEGORIES.CATEGORY_A_END) {
-			return "Category A";
-		}
-		if (issuerID >= ISSUER_CATEGORIES.CATEGORY_B_START && issuerID <= ISSUER_CATEGORIES.CATEGORY_B_END) {
-			return "Category B";
-		}
-		if (issuerID >= ISSUER_CATEGORIES.RFC_EXPANSION_START && issuerID <= ISSUER_CATEGORIES.RFC_EXPANSION_END) {
-			return "Future RFC";
-		}
-		return "Unknown";
+		return issuerCategoryName(issuerID);
 	}
 
 	/**
@@ -366,6 +344,9 @@ class UUIDValidator {
 	 * @returns {Object} Comprehensive validation report
 	 */
 	static generateValidationReport(uuidBuffer) {
+		if (!(uuidBuffer instanceof Uint8Array) || uuidBuffer.length !== 16) {
+			throw new Error("UUID must be a 16-byte buffer");
+		}
 		const hex = toHex(uuidBuffer);
 		const report = {
 			timestamp: new Date(),

@@ -142,6 +142,50 @@ export const ISSUER_CATEGORIES = {
 };
 
 /**
+ * Name of the category an issuer ID belongs to (spec section 10).
+ * @param {number} issuerID - Issuer ID (0-ISSUER_ID_MASK)
+ * @returns {string} Category name, or "Unknown" outside 0-ISSUER_ID_MASK
+ */
+export function issuerCategoryName(issuerID) {
+	if (issuerID === ISSUER_CATEGORIES.UNASSIGNED) return "Unassigned";
+	if (issuerID === ISSUER_CATEGORIES.DRAFTER_RESERVED) return "Drafter Reserved";
+	if (issuerID === ISSUER_CATEGORIES.SPEC_ORIGINATOR) return "Spec Originator";
+	if (issuerID >= ISSUER_CATEGORIES.CATEGORY_A_START && issuerID <= ISSUER_CATEGORIES.CATEGORY_A_END) {
+		return "Category A (Well-Recognized Tech Entities)";
+	}
+	if (issuerID >= ISSUER_CATEGORIES.CATEGORY_B_START && issuerID <= ISSUER_CATEGORIES.CATEGORY_B_END) {
+		return "Category B (Open Source Contributors)";
+	}
+	if (issuerID >= ISSUER_CATEGORIES.RFC_EXPANSION_START && issuerID <= ISSUER_CATEGORIES.RFC_EXPANSION_END) {
+		return "Future RFC Expansion";
+	}
+	return "Unknown";
+}
+
+/**
+ * Name of the variant family selected by bits 64-66 (spec section 4, RFC 9562 section 4.1).
+ * @param {number} variant - Bits 64-66 as a number (0-7)
+ * @returns {"NCS"|"RFC 4122/9562"|"Microsoft"|"CLDMV"} Variant family; "CLDMV" is variant 111, the namespace this library defines
+ */
+export function variantFamily(variant) {
+	if (variant >> 2 === 0) return "NCS";
+	if (variant >> 1 === 0b10) return "RFC 4122/9562";
+	if (variant === 0b110) return "Microsoft";
+	return "CLDMV";
+}
+
+/**
+ * Timestamp unit of a Timestamp Variant version.
+ * @param {number} version - Timestamp variant version
+ * @returns {"s"|"ms"|null} "s" for versions 1, 3 and 5, "ms" for 2, 4 and 6, null for versions not defined yet
+ */
+export function timestampUnit(version) {
+	if (TIMESTAMP_SECONDS_VERSIONS.includes(version)) return "s";
+	if ([2, 4, 6].includes(version)) return "ms";
+	return null;
+}
+
+/**
  * RFC 4122/9562 Standard UUID Constants
  */
 

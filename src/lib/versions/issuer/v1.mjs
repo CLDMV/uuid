@@ -38,7 +38,8 @@ import {
 	VERSION_BIT_COUNT,
 	ISSUER_ID_START_BIT,
 	ISSUER_ID_BIT_COUNT,
-	ISSUER_ID_MASK
+	ISSUER_ID_MASK,
+	issuerCategoryName
 } from "../../constants.mjs";
 
 /**
@@ -106,31 +107,5 @@ export function validateIssuerID(issuerID) {
  * @returns {string} Category name
  */
 export function getIssuerCategory(issuerID) {
-	// Import constants directly for category checking
-	const categories = {
-		UNASSIGNED: 0,
-		DRAFTER_RESERVED: 1,
-		CATEGORY_A_START: 2,
-		CATEGORY_A_END: 255,
-		CATEGORY_B_START: 256,
-		CATEGORY_B_END: 511,
-		SPEC_ORIGINATOR: 404,
-		RFC_EXPANSION_START: 512,
-		RFC_EXPANSION_END: 1023
-	};
-
-	if (issuerID === categories.UNASSIGNED) return "Unassigned";
-	if (issuerID === categories.DRAFTER_RESERVED) return "Drafter Reserved";
-	if (issuerID === categories.SPEC_ORIGINATOR) return "Spec Originator";
-	if (issuerID >= categories.CATEGORY_A_START && issuerID <= categories.CATEGORY_A_END) {
-		return "Category A (Well-Recognized Tech Entities)";
-	}
-	if (issuerID >= categories.CATEGORY_B_START && issuerID <= categories.CATEGORY_B_END) {
-		return "Category B (Open Source Contributors)";
-	}
-	if (issuerID >= categories.RFC_EXPANSION_START && issuerID <= categories.RFC_EXPANSION_END) {
-		return "Future RFC Expansion";
-	}
-
-	return "Unknown";
+	return issuerCategoryName(issuerID);
 }

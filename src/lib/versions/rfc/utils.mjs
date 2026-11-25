@@ -112,3 +112,18 @@ export function version(uuid) {
 	const versionChar = hex.charAt(12);
 	return parseInt(versionChar, 16);
 }
+
+/** 100-ns intervals between the Gregorian epoch (1582-10-15) and the Unix epoch. */
+const GREGORIAN_OFFSET_100NS = 122192928000000000n;
+
+/**
+ * The 60-bit timestamp of an RFC version 1 or 6 UUID: 100-ns intervals since 1582-10-15.
+ * @param {number} [msecs] - Milliseconds since the Unix epoch (default: now); a fraction is floored
+ * @param {number} [nsecs] - Additional 100-ns intervals (0-9999)
+ * @returns {bigint} Timestamp, masked to 60 bits
+ */
+export function gregorianTicks(msecs, nsecs) {
+	const ms = BigInt(Math.floor(msecs !== undefined ? msecs : Date.now()));
+	const extra = BigInt(Math.floor(nsecs !== undefined ? nsecs : 0));
+	return (ms * 10000n + extra + GREGORIAN_OFFSET_100NS) & ((1n << 60n) - 1n);
+}

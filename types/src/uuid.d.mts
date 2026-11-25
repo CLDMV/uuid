@@ -47,6 +47,75 @@ export type V8Options = RFCBufferOptions & {
     data?: Uint8Array;
 };
 /**
+ * Result of {@link UUID#getInfo}. Every UUID gets every field; a field its variant doesn't define is null.
+ */
+export type UUIDInfo = {
+    /**
+     * - Canonical string form
+     */
+    uuid: string;
+    /**
+     * - True for a well-formed UUID: an RFC 4122/9562 id with version 1-8, the Nil or Max id, or a CLDMV id
+     */
+    isUUID: boolean;
+    /**
+     * - True for a CLDMV id (variant 111); the RFC Max id is not one
+     */
+    isCLDMV: boolean;
+    /**
+     * - The variant as a number: NCS 0 (prefix 0), RFC 4122/9562 2 (prefix 10, Nil and Max included), Microsoft 6 (110), CLDMV 7 (111). {@link UUID#getVariant} gives the raw bits 64-66
+     */
+    variant: 0 | 2 | 6 | 7;
+    /**
+     * - Family the variant bits select; the RFC Nil and Max ids are "RFC 4122/9562"
+     */
+    variantFamily: "NCS" | "RFC 4122/9562" | "Microsoft" | "CLDMV";
+    /**
+     * - Bits 67-68 for a CLDMV id, otherwise null
+     */
+    subvariant: number | null;
+    /**
+     * - Bits 75-78 for a CLDMV id, bits 48-51 (the RFC version) for an RFC UUID, otherwise null
+     */
+    version: number | null;
+    /**
+     * - variant.subvariant.version as numbers, 0 for a part the id doesn't have: "2.0.4" for RFC v4, "7.0.6" for TB, "7.1.1" for IA, "6.0.0" for Microsoft
+     */
+    fullVersion: string;
+    /**
+     * - Same as {@link UUID#version}
+     */
+    variantIdentifier: string | number | null;
+    /**
+     * - Issuer ID for an Issuer Variant UUID, otherwise null
+     */
+    issuerID: number | null;
+    /**
+     * - Issuer category name for an Issuer Variant UUID, otherwise null
+     */
+    issuerCategory: string | null;
+    /**
+     * - Same as {@link UUID#getTimestamp}: on the Unix epoch, in `timestampUnit`
+     */
+    timestamp: number | bigint | null;
+    /**
+     * - "s" for TA, "ms" for TB and RFC v7, "100ns" for RFC v1 and v6, otherwise null
+     */
+    timestampUnit: "s" | "ms" | "100ns" | null;
+    /**
+     * - ISO 8601 date of the timestamp (millisecond precision), null without a timestamp or outside the Date range
+     */
+    date: string | null;
+    /**
+     * - True for an Issuer Variant UUID
+     */
+    isIssuerVariant: boolean;
+    /**
+     * - True for a Timestamp Variant UUID
+     */
+    isTimestampVariant: boolean;
+};
+/**
  * The byte container toBuffer() returns: a Buffer in Node, a plain Uint8Array elsewhere.
  * `#bytes-type` (package.json `imports`) resolves to a Buffer alias under the `node`
  * condition and to a Uint8Array alias otherwise.
@@ -75,6 +144,26 @@ export type V8Options = RFCBufferOptions & {
 /**
  * Options for {@link UUID.v8}. `data` supplies the 16 bytes of custom data instead of random bytes.
  * @typedef {RFCBufferOptions & { data?: Uint8Array }} V8Options
+ */
+/**
+ * Result of {@link UUID#getInfo}. Every UUID gets every field; a field its variant doesn't define is null.
+ * @typedef {object} UUIDInfo
+ * @property {string} uuid - Canonical string form
+ * @property {boolean} isUUID - True for a well-formed UUID: an RFC 4122/9562 id with version 1-8, the Nil or Max id, or a CLDMV id
+ * @property {boolean} isCLDMV - True for a CLDMV id (variant 111); the RFC Max id is not one
+ * @property {0|2|6|7} variant - The variant as a number: NCS 0 (prefix 0), RFC 4122/9562 2 (prefix 10, Nil and Max included), Microsoft 6 (110), CLDMV 7 (111). {@link UUID#getVariant} gives the raw bits 64-66
+ * @property {"NCS"|"RFC 4122/9562"|"Microsoft"|"CLDMV"} variantFamily - Family the variant bits select; the RFC Nil and Max ids are "RFC 4122/9562"
+ * @property {number|null} subvariant - Bits 67-68 for a CLDMV id, otherwise null
+ * @property {number|null} version - Bits 75-78 for a CLDMV id, bits 48-51 (the RFC version) for an RFC UUID, otherwise null
+ * @property {string} fullVersion - variant.subvariant.version as numbers, 0 for a part the id doesn't have: "2.0.4" for RFC v4, "7.0.6" for TB, "7.1.1" for IA, "6.0.0" for Microsoft
+ * @property {string|number|null} variantIdentifier - Same as {@link UUID#version}
+ * @property {number|null} issuerID - Issuer ID for an Issuer Variant UUID, otherwise null
+ * @property {string|null} issuerCategory - Issuer category name for an Issuer Variant UUID, otherwise null
+ * @property {number|bigint|null} timestamp - Same as {@link UUID#getTimestamp}: on the Unix epoch, in `timestampUnit`
+ * @property {"s"|"ms"|"100ns"|null} timestampUnit - "s" for TA, "ms" for TB and RFC v7, "100ns" for RFC v1 and v6, otherwise null
+ * @property {string|null} date - ISO 8601 date of the timestamp (millisecond precision), null without a timestamp or outside the Date range
+ * @property {boolean} isIssuerVariant - True for an Issuer Variant UUID
+ * @property {boolean} isTimestampVariant - True for a Timestamp Variant UUID
  */
 /**
  * UUID class implementing the new specification
@@ -164,7 +253,7 @@ export class UUID {
     static migrate(input: UUID | string | Uint8Array): UUID;
     /**
      * Compare two UUIDs for sorting by time, exact across the whole 70-bit timestamp range and across layouts.
-     * Timestamp Variant ids (versions 1-6, TA and TB) come first, ordered by the time they hold: seconds and milliseconds are compared on one scale (a TA id stands for the start of its second), and ties fall back to byte order. Every other UUID comes after them in byte order. Use it where byte order isn't enough: a mix of layouts (versions 3/4 next to 5/6) or version 3/4 ids past ±(2^63 - 1).
+     * UUIDs that hold a timestamp come first, ordered by that time on one scale: TA (seconds), TB (milliseconds), and RFC versions 7 (milliseconds) and 1 and 6 (100-ns intervals). A TA id stands for the start of its second. Ties fall back to byte order. Every other UUID comes after them in byte order. Use it where byte order isn't enough: a mix of layouts (versions 3/4 next to 5/6), version 3/4 ids past ±(2^63 - 1), or CLDMV and RFC ids together.
      * @param {UUID|string|Uint8Array} a - First UUID (instance, string or 16-byte buffer)
      * @param {UUID|string|Uint8Array} b - Second UUID (instance, string or 16-byte buffer)
      * @returns {-1|0|1} Negative when a sorts first, positive when b does, 0 when the bytes are equal
@@ -200,17 +289,26 @@ export class UUID {
      */
     static getIssuerInfo(issuerID: number): Promise<object | null>;
     /**
-     * Validate a UUID buffer for specification compliance
-     * @param {Uint8Array} buffer - UUID buffer to validate
+     * Normalize a validation input to its 16 bytes.
+     * Strings and UUID instances are converted; anything else is passed through
+     * so the validator reports it.
+     * @param {Uint8Array|string|UUID} input - UUID bytes, string or instance
+     * @returns {Uint8Array} UUID bytes
+     * @private
+     */
+    private static _validationBytes;
+    /**
+     * Validate a UUID for specification compliance
+     * @param {Uint8Array|string|UUID} buffer - UUID bytes, UUID string or UUID instance
      * @returns {Promise<object>} Validation results
      */
-    static validate(buffer: Uint8Array): Promise<object>;
+    static validate(buffer: Uint8Array | string | UUID): Promise<object>;
     /**
      * Generate a complete validation report for a UUID
-     * @param {Uint8Array} buffer - UUID buffer to validate
+     * @param {Uint8Array|string|UUID} buffer - UUID bytes, UUID string or UUID instance
      * @returns {Promise<object>} Detailed validation report
      */
-    static validateDetailed(buffer: Uint8Array): Promise<object>;
+    static validateDetailed(buffer: Uint8Array | string | UUID): Promise<object>;
     /**
      * Generate a version 1 (timestamp) UUID
      * @overload
@@ -355,9 +453,9 @@ export class UUID {
      */
     static validateRFC(uuid: string): boolean;
     /**
-     * Detect version/variant identifier of UUID (handles both RFC and custom variants)
+     * Detect version/variant identifier of UUID (handles both RFC and CLDMV ids)
      * @param {string|Uint8Array|UUID} uuid - UUID string, buffer, or UUID instance
-     * @returns {string|number|null} Version identifier (e.g., "TA", "TB", "IA" for custom, 1-8 for RFC, or null if invalid)
+     * @returns {string|number|null} Version identifier (e.g., "TA", "TB", "IA" for CLDMV ids, 1-8 for RFC, or null if invalid)
      * @example
      * UUID.version(uuidString); // => "TA" for Timestamp v1
      * UUID.version(uuidString); // => "TB" for Timestamp v2
@@ -456,14 +554,22 @@ export class UUID {
     getVersion(): number;
     /**
      * Get the issuer ID field
-     * @returns {number|null} Issuer ID (0-ISSUER_ID_MASK) for Issuer Variant, null for Timestamp Variant
+     * @returns {number|null} Issuer ID (0-ISSUER_ID_MASK) for an Issuer Variant UUID, null for any other UUID
      */
     getIssuerID(): number | null;
     /**
-     * Check if this UUID is a valid UUID (variant = 111)
-     * @returns {boolean} True if valid UUID
+     * Check if this is a well-formed UUID: an RFC 4122/9562 id with a defined version (1-8),
+     * the RFC Nil or Max id, or a CLDMV id (variant 111). NCS and Microsoft ids, and RFC-variant
+     * ids with version 0 or 9-15, return false.
+     * @returns {boolean} True for a well-formed UUID
      */
     isUUID(): boolean;
+    /**
+     * Check if this is a CLDMV id (variant bits 64-66 = 111): TA, TB, IA or a reserved
+     * subvariant. The RFC Max id, whose bits are all ones, is an RFC id and returns false.
+     * @returns {boolean} True for a CLDMV id
+     */
+    isCLDMV(): boolean;
     /**
      * Check if this is an Issuer Variant UUID
      * @returns {boolean} True if issuer variant
@@ -475,8 +581,8 @@ export class UUID {
      */
     isTimestampVariant(): boolean;
     /**
-     * Get the version/variant identifier (TA, TB, IA for custom variants, or RFC version number)
-     * @returns {string|number|null} Version identifier (e.g., "TA", "TB", "IA", 1-8 for RFC, or null if invalid)
+     * Get the version/variant identifier (TA, TB, IA for CLDMV ids, or RFC version number)
+     * @returns {string|number|null} Version identifier (e.g., "TA", "TB", "IA", 1-8 for RFC, 0 for Nil, 15 for Max, or null if invalid)
      * @example
      * uuid.version(); // => "TA" for Timestamp v5 (and the older v3 and v1)
      * uuid.version(); // => "TB" for Timestamp v6 (and the older v4 and v2)
@@ -496,21 +602,26 @@ export class UUID {
      */
     isLegacyTimestampLayout(): boolean;
     /**
-     * The timestamp on one scale (milliseconds) for {@link UUID.compare}, or null for a non-timestamp UUID
-     * @returns {bigint|null} Milliseconds (seconds versions multiplied by 1000), or null
+     * The timestamp on one scale (100-ns ticks since the Unix epoch) for {@link UUID.compare}, or null for a UUID without a timestamp
+     * @returns {bigint|null} 100-ns ticks, or null
      * @private
      */
     private _sortTime;
     /**
-     * Get the timestamp value from a Timestamp Variant UUID
-     * @returns {number|bigint|null} Timestamp value in the stored precision (seconds for versions 1, 3 and 5, milliseconds for versions 2, 4 and 6): a number while it is a safe integer, an exact bigint past ±(2^53 - 1), or null if not a Timestamp Variant
+     * Get the timestamp a UUID holds: TA (seconds) and TB (milliseconds) ids, and RFC version 7 (Unix milliseconds) and versions 1 and 6 (100-ns intervals, converted to the Unix epoch). {@link UUID#getTimestampUnit} gives the unit.
+     * @returns {number|bigint|null} Timestamp on the Unix epoch in the id's own unit: a number while it is a safe integer, an exact bigint past ±(2^53 - 1), or null for a UUID without a timestamp
      */
     getTimestamp(): number | bigint | null;
     /**
-     * Get the timestamp value from a Timestamp Variant UUID as a bigint, exact across the whole 70-bit range
-     * @returns {bigint|null} Timestamp value in the stored precision (seconds for versions 1, 3 and 5, milliseconds for versions 2, 4 and 6), or null if not a Timestamp Variant
+     * Get the timestamp a UUID holds as a bigint, exact across the whole range
+     * @returns {bigint|null} Timestamp on the Unix epoch in the id's own unit (see {@link UUID#getTimestampUnit}), or null for a UUID without a timestamp
      */
     getTimestampBigInt(): bigint | null;
+    /**
+     * Get the unit of {@link UUID#getTimestamp}
+     * @returns {"s"|"ms"|"100ns"|null} "s" for TA ids, "ms" for TB and RFC v7 ids, "100ns" for RFC v1 and v6 ids, null for a UUID without a timestamp
+     */
+    getTimestampUnit(): "s" | "ms" | "100ns" | null;
     /**
      * Convert UUID to string representation
      * @returns {string} UUID string with dashes
@@ -539,10 +650,11 @@ export class UUID {
      */
     getVariantIdentifier(): string | number | null;
     /**
-     * Get detailed information about this UUID
-     * @returns {object} UUID information object
+     * Get detailed information about any UUID. Every UUID gets the same fields with the same
+     * meaning; a field the id's variant doesn't define is null.
+     * @returns {UUIDInfo} UUID information object
      */
-    getInfo(): object;
+    getInfo(): UUIDInfo;
     /**
      * Handle type coercion for different contexts
      * @returns {string} UUID string representation
