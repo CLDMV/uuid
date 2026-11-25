@@ -216,7 +216,9 @@ describe("Custom UUID Implementation", () => {
 		const buffer = Buffer.from("123e4567e89b12d3a456426614174000", "hex");
 		const uuid = new UUID(buffer);
 
-		expect(uuid.isUUID()).toBeFalsy();
+		// A valid RFC v1 id: a UUID, but not a CLDMV one
+		expect(uuid.isUUID()).toBe(true);
+		expect(uuid.isCLDMV()).toBe(false);
 		expect(uuid.isIssuerVariant()).toBeFalsy();
 		expect(uuid.isTimestampVariant()).toBeFalsy();
 	});

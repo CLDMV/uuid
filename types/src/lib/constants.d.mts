@@ -11,6 +11,24 @@ export function isSecondsVersion(version: number): boolean;
  */
 export function timestampLayout(version: number): import("./timestamp.mjs").TimestampLayout;
 /**
+ * Name of the category an issuer ID belongs to (spec section 10).
+ * @param {number} issuerID - Issuer ID (0-ISSUER_ID_MASK)
+ * @returns {string} Category name, or "Unknown" outside 0-ISSUER_ID_MASK
+ */
+export function issuerCategoryName(issuerID: number): string;
+/**
+ * Name of the variant family selected by bits 64-66 (spec section 4, RFC 9562 section 4.1).
+ * @param {number} variant - Bits 64-66 as a number (0-7)
+ * @returns {"NCS"|"RFC 4122/9562"|"Microsoft"|"CLDMV"} Variant family; "CLDMV" is variant 111, the namespace this library defines
+ */
+export function variantFamily(variant: number): "NCS" | "RFC 4122/9562" | "Microsoft" | "CLDMV";
+/**
+ * Timestamp unit of a Timestamp Variant version.
+ * @param {number} version - Timestamp variant version
+ * @returns {"s"|"ms"|null} "s" for versions 1, 3 and 5, "ms" for 2, 4 and 6, null for versions not defined yet
+ */
+export function timestampUnit(version: number): "s" | "ms" | null;
+/**
  *
  *	@Project: @cldmv/uuid
  *	@Filename: /src/lib/constants.mjs

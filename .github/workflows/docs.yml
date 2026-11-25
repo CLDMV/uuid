@@ -1,0 +1,83 @@
+#
+#	@Project: @cldmv/uuid
+#	@Filename: /.github/workflows/docs.yml
+#	@Date: 2026-11-25T00:00:00-08:00 (1795593600)
+#	@Author: Nate Corcoran <CLDMV>
+#	@Email: <Shinrai@users.noreply.github.com>
+#	-----
+#	@Last modified by: Nate Corcoran <CLDMV> (Shinrai@users.noreply.github.com)
+#	@Last modified time: 2026-11-25T00:00:00-08:00 (1795593600)
+#	-----
+#	@Copyright: Copyright (c) 2013-2026 Catalyzed Motivation Inc. All rights reserved.
+#
+
+# Builds the UUID detail reference (docs/dist/index.html, from
+# scripts/generate-uuid-details.mjs) and deploys it to GitHub Pages with the
+# Pages actions, the way CLDMV/.github deploys its own site (local-pages.yml).
+# No gh-pages branch is involved.
+#
+# Requires the repo's Pages source to be "GitHub Actions"
+# (Settings → Pages → Build and deployment).
+name: 📖 Publish Docs
+
+on:
+    push:
+        branches: [master]
+        paths:
+            - "src/**"
+            - "scripts/generate-uuid-details.mjs"
+            - "scripts/uuid-details.template.html"
+            - "package.json"
+            - ".github/workflows/docs.yml"
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: pages
+    cancel-in-progress: false
+
+jobs:
+    build:
+        name: 🏗️ Build the detail reference
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: CLDMV/.github/.github/actions/common/steps/checkout-code@v4
+
+            - name: Configure Pages
+              uses: actions/configure-pages@v6
+
+            - name: Setup Node
+              uses: CLDMV/.github/.github/actions/common/steps/setup-node@v4
+              with:
+                  node-version: "lts/*"
+
+            - name: Install
+              uses: CLDMV/.github/.github/actions/npm/steps/install-dependencies@v4
+              with:
+                  package-manager: npm
+
+            - name: Build
+              run: npm run docs:build
+
+            - name: Upload site
+              uses: actions/upload-pages-artifact@v5
+              with:
+                  path: docs/dist
+
+    deploy:
+        name: 🚀 Deploy to GitHub Pages
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            pages: write
+            id-token: write
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
+            - name: Deploy
+              id: deployment
+              uses: actions/deploy-pages@v5

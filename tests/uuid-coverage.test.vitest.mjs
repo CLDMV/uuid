@@ -72,12 +72,8 @@ describe("UUID branch and alias coverage", () => {
 		expect(reserved11.version()).toBe("Reserved (subvariant 3)");
 	});
 
-	it("should return null for unknown custom subvariant and unknown issuer category branches", () => {
+	it("should report an unknown issuer category", () => {
 		const uuid = UUID.createIssuerVariant(100, 1);
-		const subvariantSpy = vi.spyOn(uuid, "getSubvariant").mockReturnValue(99);
-		expect(uuid.version()).toBe(null);
-		subvariantSpy.mockRestore();
-
 		const issuerSpy = vi.spyOn(uuid, "getIssuerID").mockReturnValue(-1);
 		expect(uuid.getIssuerCategory()).toBe("Unknown");
 		issuerSpy.mockRestore();

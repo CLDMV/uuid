@@ -87,6 +87,8 @@
 		"build:ci": "npm run lint && npm run format:check && npm run types:build && npm run build",
 		"prepack": "npm run build",
 		"demo": "node scripts/demo-custom-uuids.mjs",
+		"docs:build": "node --conditions=uuid-dev scripts/generate-uuid-details.mjs --html",
+		"docs:details": "node --conditions=uuid-dev scripts/generate-uuid-details.mjs",
 		"test": "node tests/run-vitest.mjs && npm run test:cjs && npm run test:dist && npm run test:types",
 		"test:cjs": "npm run build && node --conditions=uuid-dev --test tests/cjs/entry.test.cjs",
 		"test:dist": "npm run build && node tests/run-vitest.mjs --mode=dist",

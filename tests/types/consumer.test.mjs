@@ -168,11 +168,19 @@ const registry = await UUID.getRegistry();
 const available: boolean = registry.isAvailable(300);
 const info = await UUID.getIssuerInfo(1);
 const report = await UUID.validate(ta.toBuffer());
+const reportFromString = await UUID.validateDetailed(ta.toString());
+const uuidInfo = tb.getInfo();
+const infoUnit: "s" | "ms" | "100ns" | null = uuidInfo.timestampUnit;
+const infoDate: string | null = uuidInfo.date;
+const rfcUnit: "s" | "ms" | "100ns" | null = tb.getTimestampUnit();
+const infoVersion: number | null = uuidInfo.version;
+const infoFamily: "NCS" | "RFC 4122/9562" | "Microsoft" | "CLDMV" = uuidInfo.variantFamily;
+const infoCLDMV: boolean = uuidInfo.isCLDMV && tb.isCLDMV();
 
 export {
 	same, sameLower, v1, v4, v4Random, v4Buf, v6, v7, v8, v1Node, v3, v5, nil, parsed,
 	text, fromArray, valid, rfcVersion, ta, tb, ia, viaTimestamp, seededTick, seededBytes, tbSeeded, taSeeded, unseeded, sizedBytes, sizedTick, viaIssuer, instance, fromString, migrated, migratedFromString, migratedFromBytes, isLegacy, ts, tsBig, order, sortedIds, tbFromBigInt, taFromString, issuerID,
-	bytes, asString, json, category, available, info, report
+	bytes, asString, json, category, available, info, report, reportFromString, infoUnit, infoDate, rfcUnit, infoVersion, infoFamily, infoCLDMV
 };
 `
 	);

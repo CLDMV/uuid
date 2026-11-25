@@ -57,19 +57,23 @@ describe("UUIDValidator", () => {
 		const buffer = Buffer.from("123e4567e89b12d3a456426614174000", "hex");
 		const result = UUIDValidator.validateCompleteUUID(buffer);
 
-		expect(result.isUUID).toBe(false);
-		expect(result.warnings.length > 0).toBeTruthy();
-		expect(result.warnings[0].includes("Not a valid UUID")).toBeTruthy();
+		expect(result.isUUID).toBe(true);
+		expect(result.isCLDMV).toBe(false);
+		expect(result.isValid).toBe(true);
+		expect(result.warnings).toEqual([]);
+		expect(result.fields.variantFamily).toBe("RFC 4122/9562");
+		expect(result.fields.version).toBe(1);
+		expect(result.fields.subvariant).toBe(null);
 	});
 
 	test("should validate all issuer categories", () => {
 		const testCases = [
 			{ id: ISSUER_CATEGORIES.UNASSIGNED, category: "Unassigned" },
 			{ id: ISSUER_CATEGORIES.DRAFTER_RESERVED, category: "Drafter Reserved" },
-			{ id: 100, category: "Category A" },
-			{ id: 300, category: "Category B" },
+			{ id: 100, category: "Category A (Well-Recognized Tech Entities)" },
+			{ id: 300, category: "Category B (Open Source Contributors)" },
 			{ id: ISSUER_CATEGORIES.SPEC_ORIGINATOR, category: "Spec Originator" },
-			{ id: 600, category: "Future RFC" }
+			{ id: 600, category: "Future RFC Expansion" }
 		];
 
 		for (const testCase of testCases) {
@@ -128,7 +132,8 @@ describe("UUIDValidator", () => {
 
 		expect(result.isValid).toBe(true);
 		expect(typeof result.bitFields.timestampSign).toBe("number");
-		expect(typeof result.bitFields.timestampLower63).toBe("bigint");
+		expect(typeof result.bitFields.timestampSegmentA).toBe("bigint");
+		expect(result.bitFields.issuerID).toBe(null);
 		expect(result.bitFields.variant).toBe(VARIANT_BITS);
 		expect(result.bitFields.subvariant).toBe(SUBVARIANT_TIMESTAMP);
 		expect(result.bitFields.version).toBe(3);
@@ -171,9 +176,9 @@ describe("UUIDValidator", () => {
 			{ id: 0, expected: "Unassigned" },
 			{ id: 1, expected: "Drafter Reserved" },
 			{ id: 404, expected: "Spec Originator" },
-			{ id: 50, expected: "Category A" },
-			{ id: 300, expected: "Category B" },
-			{ id: 700, expected: "Future RFC" },
+			{ id: 50, expected: "Category A (Well-Recognized Tech Entities)" },
+			{ id: 300, expected: "Category B (Open Source Contributors)" },
+			{ id: 700, expected: "Future RFC Expansion" },
 			{ id: 9999, expected: "Unknown" }
 		];
 
@@ -213,8 +218,11 @@ describe("UUIDValidator", () => {
 		expect(result.isValid).toBe(true);
 		expect(result.fields.subvariant).toBe(SUBVARIANT_TIMESTAMP);
 		expect(typeof result.fields.timestampSign).toBe("number");
-		expect(typeof result.fields.timestampLower63).toBe("bigint");
-		expect(result.fields.reservedBit69).toBe(0);
+		expect(typeof result.fields.timestampSegmentA).toBe("bigint");
+		expect(result.fields.timestampLayout).toBe("ordered");
+		expect(result.fields.timestampUnit).toBe("ms");
+		expect(result.fields.timestamp).toBe(BigInt(timestamp));
+		expect(result.fields.reservedBit69).toBeUndefined();
 	});
 
 	test("bit 69 is part of the timestamp, so setting it is no warning", () => {
@@ -225,7 +233,7 @@ describe("UUIDValidator", () => {
 		BitUtils.setBits(buffer, 75, 4, 1);
 
 		const result = UUIDValidator.validateCompleteUUID(buffer);
-		expect(result.fields.reservedBit69).toBe(1);
+		expect(result.fields.timestampContinuation).toBe(0b100000);
 		expect(result.warnings.some((warning) => warning.includes("Reserved bit 69"))).toBe(false);
 	});
 
@@ -234,7 +242,7 @@ describe("UUIDValidator", () => {
 			const result = UUIDValidator.validateCompleteUUID(UUID.TB(timestamp).toBuffer());
 			expect(result.isValid).toBe(true);
 			expect(result.warnings).toEqual([]);
-			expect(result.fields.actualTimestamp).toBe(BigInt(timestamp));
+			expect(result.fields.timestamp).toBe(BigInt(timestamp));
 		}
 	});
 
@@ -312,12 +320,10 @@ describe("UUIDValidator", () => {
 	});
 
 	test("should warn for future RFC issuer range in issuer variant validation", () => {
-		ISSUER_CATEGORIES.FUTURE_RFC_START = 512;
-		ISSUER_CATEGORIES.FUTURE_RFC_END = 1023;
-
 		const uuid = UUID.createIssuerVariant(700, 1);
 		const result = UUIDValidator.validateCompleteUUID(uuid.toBuffer());
-		expect(result.fields.categoryValidation).toBe("Future RFC Expansion");
+		expect(result.fields.issuerCategory).toBe("Future RFC Expansion");
+		expect(result.fields.categoryValidation).toBeUndefined();
 		expect(result.warnings.some((warning) => warning.includes("future RFC expansion range"))).toBe(true);
 	});
 
@@ -401,18 +407,12 @@ describe("UUIDValidator", () => {
 		spy.mockRestore();
 	});
 
-	test("should skip entropy balance analysis when no mutable bits are available", () => {
-		const RealUint8Array = Uint8Array;
-		const allocSpy = vi.spyOn(globalThis, "Uint8Array").mockImplementation(function (arg) {
-			return new RealUint8Array(arg).fill(0xff);
-		});
-
-		const result = UUIDValidator.validateEntropy(new RealUint8Array(16));
-		expect(result.analysis.bitBalance).toBeUndefined();
-		expect(result.warnings.includes("All entropy bits are zero")).toBe(false);
-		expect(result.warnings.includes("All entropy bits are one")).toBe(false);
-
-		allocSpy.mockRestore();
+	test("should skip entropy balance analysis when the UUID has no random field", () => {
+		// The Nil UUID has no random bits: no count, no balance, no all-zero warning
+		const result = UUIDValidator.validateEntropy(new Uint8Array(16));
+		expect(result.entropyBits).toBe(null);
+		expect(result.analysis.bitBalance).toBe(null);
+		expect(result.warnings).toEqual([]);
 	});
 });
 
@@ -445,7 +445,8 @@ describe("UUID.validate / validateDetailed input forms (#119)", () => {
 		const id = UUID.v4();
 		const report = await UUID.validateDetailed(id);
 		expect(report.uuidString).toBe(id);
-		expect(report.sections.complete.isUUID).toBe(false);
+		expect(report.sections.complete.isUUID).toBe(true);
+		expect(report.sections.complete.isCLDMV).toBe(false);
 	});
 
 	test("rejects malformed input with a clear error", async () => {
