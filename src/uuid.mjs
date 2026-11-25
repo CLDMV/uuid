@@ -29,20 +29,11 @@
 import { randomBytes } from "@cldmv/uuid/rng";
 import { toHex, fromHex, toBufferLike } from "@cldmv/uuid/bytes";
 import { BitUtils } from "./lib/bit-utils.mjs";
-import {
-	toTimestampBigInt,
-	toTimestampNumber,
-	writeTimestamp,
-	readTimestamp,
-	writeStoredMagnitude,
-	readStoredMagnitude
-} from "./lib/timestamp.mjs";
+import { toTimestampBigInt, toTimestampNumber, writeTimestamp, writeStoredMagnitude, readStoredMagnitude } from "./lib/timestamp.mjs";
 import {
 	VARIANT_BITS,
 	SUBVARIANT_TIMESTAMP,
 	SUBVARIANT_ISSUER,
-	SUBVARIANT_RESERVED_10,
-	SUBVARIANT_RESERVED_11,
 	VERSION_START_BIT,
 	VERSION_BIT_COUNT,
 	ISSUER_ID_START_BIT,
@@ -50,9 +41,11 @@ import {
 	ISSUER_ID_MASK,
 	ISSUER_CATEGORIES,
 	isSecondsVersion,
-	timestampLayout
+	timestampLayout,
+	issuerCategoryName
 } from "./lib/constants.mjs";
 import * as rfcUuids from "./lib/versions/rfc/index.mjs";
+import { describeBytes, classify, toTicks } from "./lib/describe.mjs";
 import { entropy as buildEntropy } from "./lib/entropy.mjs";
 
 /**
@@ -89,6 +82,25 @@ import { entropy as buildEntropy } from "./lib/entropy.mjs";
 /**
  * Options for {@link UUID.v8}. `data` supplies the 16 bytes of custom data instead of random bytes.
  * @typedef {RFCBufferOptions & { data?: Uint8Array }} V8Options
+ */
+
+/**
+ * Result of {@link UUID#getInfo}. Every UUID gets every field; a field its variant doesn't define is null.
+ * @typedef {object} UUIDInfo
+ * @property {string} uuid - Canonical string form
+ * @property {boolean} isUUID - True for a custom-variant UUID (variant 111); the RFC Max id is not one
+ * @property {number} variant - Bits 64-66 (7 for a custom UUID, 4 or 5 for an RFC 4122/9562 UUID)
+ * @property {"NCS"|"RFC 4122/9562"|"Microsoft"|"Custom"} variantFamily - Family the variant bits select; the RFC Nil and Max ids are "RFC 4122/9562"
+ * @property {number|null} subvariant - Bits 67-68 for a custom UUID, otherwise null
+ * @property {number|null} version - Bits 75-78 for a custom UUID, bits 48-51 (the RFC version) for an RFC UUID, otherwise null
+ * @property {string|number|null} variantIdentifier - Same as {@link UUID#version}
+ * @property {number|null} issuerID - Issuer ID for an Issuer Variant UUID, otherwise null
+ * @property {string|null} issuerCategory - Issuer category name for an Issuer Variant UUID, otherwise null
+ * @property {number|bigint|null} timestamp - Same as {@link UUID#getTimestamp}: on the Unix epoch, in `timestampUnit`
+ * @property {"s"|"ms"|"100ns"|null} timestampUnit - "s" for TA, "ms" for TB and RFC v7, "100ns" for RFC v1 and v6, otherwise null
+ * @property {string|null} date - ISO 8601 date of the timestamp (millisecond precision), null without a timestamp or outside the Date range
+ * @property {boolean} isIssuerVariant - True for an Issuer Variant UUID
+ * @property {boolean} isTimestampVariant - True for a Timestamp Variant UUID
  */
 
 /**
@@ -419,23 +431,21 @@ class UUID {
 
 	/**
 	 * Get the issuer ID field
-	 * @returns {number|null} Issuer ID (0-ISSUER_ID_MASK) for Issuer Variant, null for Timestamp Variant
+	 * @returns {number|null} Issuer ID (0-ISSUER_ID_MASK) for an Issuer Variant UUID, null for any other UUID
 	 */
 	getIssuerID() {
-		// Issuer ID only exists in Issuer Variant (subvariant 01)
-		// For Timestamp Variant (subvariant 00), bits 79-88 are entropy, not issuer ID
-		if (this.isTimestampVariant()) {
-			return null;
-		}
-		return BitUtils.getBitsAsNumber(this._buffer, ISSUER_ID_START_BIT, ISSUER_ID_BIT_COUNT);
+		// Only the Issuer Variant (variant 111, subvariant 01) has an issuer ID. Elsewhere
+		// bits 79-88 are timestamp-variant entropy, reserved-subvariant bits or RFC data.
+		return describeBytes(this._buffer).issuerID;
 	}
 
 	/**
-	 * Check if this UUID is a valid UUID (variant = 111)
-	 * @returns {boolean} True if valid UUID
+	 * Check if this is a custom-variant UUID (variant bits 64-66 = 111). The RFC 9562 Max id,
+	 * whose bits are all ones, is an RFC id and returns false.
+	 * @returns {boolean} True for a custom-variant UUID
 	 */
 	isUUID() {
-		return this.getVariant() === VARIANT_BITS;
+		return classify(this._buffer).isCustom;
 	}
 
 	/**
@@ -456,7 +466,7 @@ class UUID {
 
 	/**
 	 * Get the version/variant identifier (TA, TB, IA for custom variants, or RFC version number)
-	 * @returns {string|number|null} Version identifier (e.g., "TA", "TB", "IA", 1-8 for RFC, or null if invalid)
+	 * @returns {string|number|null} Version identifier (e.g., "TA", "TB", "IA", 1-8 for RFC, 0 for Nil, 15 for Max, or null if invalid)
 	 * @example
 	 * uuid.version(); // => "TA" for Timestamp v5 (and the older v3 and v1)
 	 * uuid.version(); // => "TB" for Timestamp v6 (and the older v4 and v2)
@@ -464,38 +474,7 @@ class UUID {
 	 * uuid.version(); // => 4 for RFC v4
 	 */
 	version() {
-		// Check if this is a custom UUID (variant = 111)
-		if (this.isUUID()) {
-			const subvariant = this.getSubvariant();
-			const version = this.getVersion();
-
-			// Timestamp Variant (subvariant 00)
-			if (subvariant === SUBVARIANT_TIMESTAMP) {
-				if (version === 1 || version === 3 || version === 5) return "TA";
-				if (version === 2 || version === 4 || version === 6) return "TB";
-				// Future timestamp versions can be added here
-				return `Timestamp v${version}`;
-			}
-
-			// Issuer Variant (subvariant 01)
-			if (subvariant === SUBVARIANT_ISSUER) {
-				if (version === 1) return "IA";
-				// Future issuer versions can be added here
-				return `Issuer v${version}`;
-			}
-
-			// Reserved subvariants
-			if (subvariant === SUBVARIANT_RESERVED_10 || subvariant === SUBVARIANT_RESERVED_11) {
-				return `Reserved (subvariant ${subvariant})`;
-			}
-
-			return null;
-		}
-
-		// Not a custom UUID, check if it's a valid RFC UUID
-		const uuidString = this.toString();
-		const rfcVersion = rfcUuids.version(uuidString);
-		return rfcVersion;
+		return describeBytes(this._buffer).variantIdentifier;
 	}
 
 	/**
@@ -504,26 +483,7 @@ class UUID {
 	 */
 	getIssuerCategory() {
 		const issuerID = this.getIssuerID();
-
-		// Timestamp variants don't have issuer IDs
-		if (issuerID === null) {
-			return null;
-		}
-
-		if (issuerID === ISSUER_CATEGORIES.UNASSIGNED) return "Unassigned";
-		if (issuerID === ISSUER_CATEGORIES.DRAFTER_RESERVED) return "Drafter Reserved";
-		if (issuerID === ISSUER_CATEGORIES.SPEC_ORIGINATOR) return "Spec Originator";
-		if (issuerID >= ISSUER_CATEGORIES.CATEGORY_A_START && issuerID <= ISSUER_CATEGORIES.CATEGORY_A_END) {
-			return "Category A (Well-Recognized Tech Entities)";
-		}
-		if (issuerID >= ISSUER_CATEGORIES.CATEGORY_B_START && issuerID <= ISSUER_CATEGORIES.CATEGORY_B_END) {
-			return "Category B (Open Source Contributors)";
-		}
-		if (issuerID >= ISSUER_CATEGORIES.RFC_EXPANSION_START && issuerID <= ISSUER_CATEGORIES.RFC_EXPANSION_END) {
-			return "Future RFC Expansion";
-		}
-
-		return "Unknown";
+		return issuerID === null ? null : issuerCategoryName(issuerID);
 	}
 
 	/**
@@ -562,7 +522,7 @@ class UUID {
 
 	/**
 	 * Compare two UUIDs for sorting by time, exact across the whole 70-bit timestamp range and across layouts.
-	 * Timestamp Variant ids (versions 1-6, TA and TB) come first, ordered by the time they hold: seconds and milliseconds are compared on one scale (a TA id stands for the start of its second), and ties fall back to byte order. Every other UUID comes after them in byte order. Use it where byte order isn't enough: a mix of layouts (versions 3/4 next to 5/6) or version 3/4 ids past ±(2^63 - 1).
+	 * UUIDs that hold a timestamp come first, ordered by that time on one scale: TA (seconds), TB (milliseconds), and RFC versions 7 (milliseconds) and 1 and 6 (100-ns intervals). A TA id stands for the start of its second. Ties fall back to byte order. Every other UUID comes after them in byte order. Use it where byte order isn't enough: a mix of layouts (versions 3/4 next to 5/6), version 3/4 ids past ±(2^63 - 1), or custom and RFC ids together.
 	 * @param {UUID|string|Uint8Array} a - First UUID (instance, string or 16-byte buffer)
 	 * @param {UUID|string|Uint8Array} b - Second UUID (instance, string or 16-byte buffer)
 	 * @returns {-1|0|1} Negative when a sorts first, positive when b does, 0 when the bytes are equal
@@ -584,19 +544,19 @@ class UUID {
 	}
 
 	/**
-	 * The timestamp on one scale (milliseconds) for {@link UUID.compare}, or null for a non-timestamp UUID
-	 * @returns {bigint|null} Milliseconds (seconds versions multiplied by 1000), or null
+	 * The timestamp on one scale (100-ns ticks since the Unix epoch) for {@link UUID.compare}, or null for a UUID without a timestamp
+	 * @returns {bigint|null} 100-ns ticks, or null
 	 * @private
 	 */
 	_sortTime() {
-		const value = this.getTimestampBigInt();
-		if (value === null) return null;
-		return isSecondsVersion(this.getVersion()) ? value * 1000n : value;
+		const { timestamp, timestampUnit } = describeBytes(this._buffer);
+		if (timestamp === null) return null;
+		return toTicks(timestamp, timestampUnit ?? "ms");
 	}
 
 	/**
-	 * Get the timestamp value from a Timestamp Variant UUID
-	 * @returns {number|bigint|null} Timestamp value in the stored precision (seconds for versions 1, 3 and 5, milliseconds for versions 2, 4 and 6): a number while it is a safe integer, an exact bigint past ±(2^53 - 1), or null if not a Timestamp Variant
+	 * Get the timestamp a UUID holds: TA (seconds) and TB (milliseconds) ids, and RFC version 7 (Unix milliseconds) and versions 1 and 6 (100-ns intervals, converted to the Unix epoch). {@link UUID#getTimestampUnit} gives the unit.
+	 * @returns {number|bigint|null} Timestamp on the Unix epoch in the id's own unit: a number while it is a safe integer, an exact bigint past ±(2^53 - 1), or null for a UUID without a timestamp
 	 */
 	getTimestamp() {
 		const value = this.getTimestampBigInt();
@@ -604,15 +564,19 @@ class UUID {
 	}
 
 	/**
-	 * Get the timestamp value from a Timestamp Variant UUID as a bigint, exact across the whole 70-bit range
-	 * @returns {bigint|null} Timestamp value in the stored precision (seconds for versions 1, 3 and 5, milliseconds for versions 2, 4 and 6), or null if not a Timestamp Variant
+	 * Get the timestamp a UUID holds as a bigint, exact across the whole range
+	 * @returns {bigint|null} Timestamp on the Unix epoch in the id's own unit (see {@link UUID#getTimestampUnit}), or null for a UUID without a timestamp
 	 */
 	getTimestampBigInt() {
-		// Timestamp only exists in Timestamp Variant (subvariant 00)
-		if (!this.isTimestampVariant()) {
-			return null;
-		}
-		return readTimestamp(this._buffer, timestampLayout(this.getVersion()));
+		return describeBytes(this._buffer).timestamp;
+	}
+
+	/**
+	 * Get the unit of {@link UUID#getTimestamp}
+	 * @returns {"s"|"ms"|"100ns"|null} "s" for TA ids, "ms" for TB and RFC v7 ids, "100ns" for RFC v1 and v6 ids, null for a UUID without a timestamp
+	 */
+	getTimestampUnit() {
+		return describeBytes(this._buffer).timestampUnit;
 	}
 
 	/**
@@ -675,22 +639,16 @@ class UUID {
 	}
 
 	/**
-	 * Get detailed information about this UUID
-	 * @returns {object} UUID information object
+	 * Get detailed information about any UUID. Every UUID gets the same fields with the same
+	 * meaning; a field the id's variant doesn't define is null.
+	 * @returns {UUIDInfo} UUID information object
 	 */
 	getInfo() {
+		const info = describeBytes(this._buffer);
 		return {
 			uuid: this.toString(),
-			isUUID: this.isUUID(),
-			variant: this.getVariant(),
-			subvariant: this.getSubvariant(),
-			version: this.getVersion(),
-			variantIdentifier: this.version(),
-			issuerID: this.getIssuerID(),
-			issuerCategory: this.getIssuerCategory(),
-			timestamp: this.getTimestamp(),
-			isIssuerVariant: this.isIssuerVariant(),
-			isTimestampVariant: this.isTimestampVariant()
+			...info,
+			timestamp: info.timestamp === null ? null : toTimestampNumber(info.timestamp)
 		};
 	}
 

@@ -173,7 +173,7 @@ describe("legacy versions 1 and 2 still decode", () => {
 		]) {
 			const result = UUIDValidator.validateCompleteUUID(UUID.timestamp(ts, version).toBuffer());
 			expect(result.isValid).toBe(true);
-			expect(result.fields.actualTimestamp).toBe(BigInt(ts));
+			expect(result.fields.timestamp).toBe(BigInt(ts));
 		}
 	});
 });
