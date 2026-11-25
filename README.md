@@ -199,6 +199,8 @@ The UUID class implements `valueOf()`, `Symbol.toPrimitive`, and `toJSON()` to e
 
 ## 📘 API Reference
 
+📋 **[UUID detail reference](https://github.com/CLDMV/uuid/blob/master/docs/reference/uuid-details.md)**: what `getInfo()`, the instance and static methods, `validate()` and `validateDetailed()` return for one id of every RFC version, the Nil, Max and Microsoft ids, and each kind of CLDMV id.
+
 ### Custom UUID Specification Methods
 
 The core API for the RFC-ready custom UUID specification.
@@ -449,7 +451,7 @@ JSON.stringify(obj);
 
 ##### `uuid.getInfo()`
 
-Describes any UUID, CLDMV or RFC, with the same fields. A field the id's variant doesn't define is `null`. `fullVersion` is `variant.subvariant.version` as numbers, with 0 for a part the id doesn't have; it identifies the kind of id and isn't meant to be compared like a semver version.
+Describes any UUID, CLDMV or RFC, with the same fields. The [UUID detail reference](https://github.com/CLDMV/uuid/blob/master/docs/reference/uuid-details.md) shows the full output for every kind of id. A field the id's variant doesn't define is `null`. `fullVersion` is `variant.subvariant.version` as numbers, with 0 for a part the id doesn't have; it identifies the kind of id and isn't meant to be compared like a semver version.
 
 | Field                                   | CLDMV id (variant `111`)                                               | RFC 4122/9562 id                                                                                                                           |
 | --------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -1278,6 +1280,10 @@ The complete formal specification is available in [uuid-spec.md](https://github.
 - Version numbering conventions
 - Collision resistance proofs
 - RFC submission rationale
+
+### UUID detail reference
+
+- **[UUID detail reference](https://github.com/CLDMV/uuid/blob/master/docs/reference/uuid-details.md)**: every detail method's output for each kind of id, generated from the library (`npm run docs:details`)
 
 ### Changelog
 
