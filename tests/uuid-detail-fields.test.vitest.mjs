@@ -456,3 +456,24 @@ describe("validateDetailed() (#123)", () => {
 		expect(report.sections.entropy.warnings).toContain("All entropy bits are one");
 	});
 });
+
+describe("date edge paths", () => {
+	test("toISODate returns null outside the range a Date can hold", async () => {
+		const { toISODate } = await import("../src/lib/describe.mjs");
+		expect(toISODate(8_640_000_000_000_001n, "ms")).toBeNull();
+		expect(toISODate(-8_640_000_000_000_001n, "ms")).toBeNull();
+		expect(toISODate(0n, "ms")).toBe("1970-01-01T00:00:00.000Z");
+		// pre-1970 sub-millisecond values floor into the earlier millisecond
+		expect(toISODate(-1n, "100ns")).toBe("1969-12-31T23:59:59.999Z");
+		expect(toISODate(-10_000n, "100ns")).toBe("1969-12-31T23:59:59.999Z");
+	});
+
+	test("a timestamp-subvariant id with an undefined version sorts its timestamp as milliseconds", () => {
+		const uuid = UUID.TB(new Date("2024-01-01T00:00:00.000Z"));
+		uuid._setVersion(9);
+		const info = uuid.getInfo();
+		expect(info.isTimestampVariant).toBe(true);
+		expect(info.timestampUnit).toBeNull();
+		expect(uuid._sortTime()).toBe(BigInt(info.timestamp) * 10_000n);
+	});
+});
