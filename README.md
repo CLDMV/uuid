@@ -199,7 +199,7 @@ The UUID class implements `valueOf()`, `Symbol.toPrimitive`, and `toJSON()` to e
 
 ## 📘 API Reference
 
-📋 **[UUID detail reference](https://github.com/CLDMV/uuid/blob/master/docs/reference/uuid-details.md)**: what `getInfo()`, the instance and static methods, `validate()` and `validateDetailed()` return for one id of every RFC version, the Nil, Max and Microsoft ids, and each kind of CLDMV id.
+📋 **[UUID detail reference](https://cldmv.github.io/uuid/)** ([Markdown version](https://github.com/CLDMV/uuid/blob/master/docs/reference/uuid-details.md)): what `getInfo()`, the instance and static methods, `validate()` and `validateDetailed()` return for one id of every RFC version, the Nil, Max and Microsoft ids, and each kind of CLDMV id.
 
 ### Custom UUID Specification Methods
 
@@ -451,7 +451,7 @@ JSON.stringify(obj);
 
 ##### `uuid.getInfo()`
 
-Describes any UUID, CLDMV or RFC, with the same fields. The [UUID detail reference](https://github.com/CLDMV/uuid/blob/master/docs/reference/uuid-details.md) shows the full output for every kind of id. A field the id's variant doesn't define is `null`. `fullVersion` is `variant.subvariant.version` as numbers, with 0 for a part the id doesn't have; it identifies the kind of id and isn't meant to be compared like a semver version.
+Describes any UUID, CLDMV or RFC, with the same fields. The [UUID detail reference](https://cldmv.github.io/uuid/) ([Markdown](https://github.com/CLDMV/uuid/blob/master/docs/reference/uuid-details.md)) shows the full output for every kind of id. A field the id's variant doesn't define is `null`. `fullVersion` is `variant.subvariant.version` as numbers, with 0 for a part the id doesn't have; it identifies the kind of id and isn't meant to be compared like a semver version.
 
 | Field                                   | CLDMV id (variant `111`)                                               | RFC 4122/9562 id                                                                                                                           |
 | --------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -1283,7 +1283,8 @@ The complete formal specification is available in [uuid-spec.md](https://github.
 
 ### UUID detail reference
 
-- **[UUID detail reference](https://github.com/CLDMV/uuid/blob/master/docs/reference/uuid-details.md)**: every detail method's output for each kind of id, generated from the library (`npm run docs:details`)
+- **[UUID detail reference](https://cldmv.github.io/uuid/)**: every detail method's output for each kind of id, generated from the library (`npm run docs:build`) and published with each release
+- **[UUID detail reference, Markdown](https://github.com/CLDMV/uuid/blob/master/docs/reference/uuid-details.md)**: the same reference as a page in the repository (`npm run docs:details`)
 
 ### Changelog
 
