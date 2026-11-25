@@ -1,3 +1,0 @@
-export { v1 as timestampV1, v2 as timestampV2, v3 as timestampV3, v4 as timestampV4, v5 as timestampV5, v6 as timestampV6, ta, tb, parseTimestampV1, parseTimestampV2, parseTimestampV3, parseTimestampV4, parseTimestampV5, parseTimestampV6 } from "./timestamp/index.mjs";
-export { v1 as issuerV1, ia, parseIssuerID, validateIssuerID, getIssuerCategory } from "./issuer/index.mjs";
-//# sourceMappingURL=index.d.mts.map
