@@ -16,7 +16,8 @@ The custom variants (`TA`, `TB`, `IA`) live in the variant `111` namespace, so t
 
 ### Latest: v2.0.1 (November 2026)
 
-- **`validate()` / `validateDetailed()` take strings**: both now accept a UUID string (with or without dashes, either case), a `UUID` instance or the 16 bytes. `validateDetailed()` used to throw a `TypeError` from `toHex` on a string, and malformed input now gets a clear error ([#120](https://github.com/CLDMV/uuid/pull/120), fixes [#119](https://github.com/CLDMV/uuid/issues/119)).
+- **One description for every UUID**: `getInfo()`, `validate()` and `validateDetailed()` give RFC and custom ids the same fields, `null` where a field doesn't apply. RFC ids stop getting made-up subvariants and issuer categories, RFC v1/v6/v7 ids report their timestamp (and sort by it in `UUID.compare()`), and `validate()` takes strings ([#120](https://github.com/CLDMV/uuid/pull/120), fixes [#119](https://github.com/CLDMV/uuid/issues/119) and [#123](https://github.com/CLDMV/uuid/issues/123)).
+- **`UUID.v1()` / `UUID.v6()` write the right time**: both produced wrong timestamps and now match the RFC 9562 test vectors (fixes [#124](https://github.com/CLDMV/uuid/issues/124)). Some validator fields are renamed; see the upgrade notes.
 - [View full v2.0.1 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v2/v2.0.1.md)
 
 ### Recent Releases
