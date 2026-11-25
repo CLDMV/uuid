@@ -415,3 +415,43 @@ describe("UUIDValidator", () => {
 		allocSpy.mockRestore();
 	});
 });
+
+describe("UUID.validate / validateDetailed input forms (#119)", () => {
+	const ids = [
+		["issue #119 TB id", "8000018b-cfe5-6800-e009-c289f23865d3"],
+		["TA", UUID.TA().toString()],
+		["TB", UUID.TB().toString()],
+		["IA", UUID.IA(100).toString()]
+	];
+	for (let version = 1; version <= 6; version++) {
+		ids.push([`timestamp v${version}`, UUID.timestamp(null, version).toString()]);
+		ids.push([`issuer v${version}`, UUID.issuer(100, version).toString()]);
+	}
+
+	test.each(ids)("validateDetailed reports on %s as string, bytes and instance", async (_label, id) => {
+		const uuid = new UUID(id);
+		for (const input of [id, id.replace(/-/g, "").toUpperCase(), uuid.toBuffer(), uuid]) {
+			const report = await UUID.validateDetailed(input);
+			expect(report.uuidString).toBe(id.toLowerCase());
+			expect(report.overallValid).toBe(true);
+			expect(report.allErrors).toEqual([]);
+			const result = await UUID.validate(input);
+			expect(result.isValid).toBe(true);
+			expect(result.isUUID).toBe(true);
+		}
+	});
+
+	test("validateDetailed reports on an RFC id", async () => {
+		const id = UUID.v4();
+		const report = await UUID.validateDetailed(id);
+		expect(report.uuidString).toBe(id);
+		expect(report.sections.complete.isUUID).toBe(false);
+	});
+
+	test("rejects malformed input with a clear error", async () => {
+		await expect(UUID.validateDetailed("not-a-uuid")).rejects.toThrow("Invalid UUID string");
+		await expect(UUID.validate("zz00018b-cfe5-6800-e009-c289f23865d3")).rejects.toThrow("Invalid UUID string");
+		await expect(UUID.validateDetailed(undefined)).rejects.toThrow("UUID must be a 16-byte buffer");
+		await expect(UUID.validateDetailed(new Uint8Array(8))).rejects.toThrow("UUID must be a 16-byte buffer");
+	});
+});

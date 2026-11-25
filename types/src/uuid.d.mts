@@ -200,17 +200,26 @@ export class UUID {
      */
     static getIssuerInfo(issuerID: number): Promise<object | null>;
     /**
-     * Validate a UUID buffer for specification compliance
-     * @param {Uint8Array} buffer - UUID buffer to validate
+     * Normalize a validation input to its 16 bytes.
+     * Strings and UUID instances are converted; anything else is passed through
+     * so the validator reports it.
+     * @param {Uint8Array|string|UUID} input - UUID bytes, string or instance
+     * @returns {Uint8Array} UUID bytes
+     * @private
+     */
+    private static _validationBytes;
+    /**
+     * Validate a UUID for specification compliance
+     * @param {Uint8Array|string|UUID} buffer - UUID bytes, UUID string or UUID instance
      * @returns {Promise<object>} Validation results
      */
-    static validate(buffer: Uint8Array): Promise<object>;
+    static validate(buffer: Uint8Array | string | UUID): Promise<object>;
     /**
      * Generate a complete validation report for a UUID
-     * @param {Uint8Array} buffer - UUID buffer to validate
+     * @param {Uint8Array|string|UUID} buffer - UUID bytes, UUID string or UUID instance
      * @returns {Promise<object>} Detailed validation report
      */
-    static validateDetailed(buffer: Uint8Array): Promise<object>;
+    static validateDetailed(buffer: Uint8Array | string | UUID): Promise<object>;
     /**
      * Generate a version 1 (timestamp) UUID
      * @overload

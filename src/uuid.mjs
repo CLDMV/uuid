@@ -743,23 +743,43 @@ class UUID {
 	}
 
 	/**
-	 * Validate a UUID buffer for specification compliance
-	 * @param {Uint8Array} buffer - UUID buffer to validate
+	 * Normalize a validation input to its 16 bytes.
+	 * Strings and UUID instances are converted; anything else is passed through
+	 * so the validator reports it.
+	 * @param {Uint8Array|string|UUID} input - UUID bytes, string or instance
+	 * @returns {Uint8Array} UUID bytes
+	 * @private
+	 */
+	static _validationBytes(input) {
+		if (input instanceof UUID) return input._buffer;
+		if (typeof input === "string") {
+			const hex = input.replace(/-/g, "");
+			if (!/^[0-9a-f]{32}$/i.test(hex)) {
+				throw new Error("Invalid UUID string");
+			}
+			return fromHex(hex);
+		}
+		return input;
+	}
+
+	/**
+	 * Validate a UUID for specification compliance
+	 * @param {Uint8Array|string|UUID} buffer - UUID bytes, UUID string or UUID instance
 	 * @returns {Promise<object>} Validation results
 	 */
 	static async validate(buffer) {
 		const { UUIDValidator } = await import("./lib/validators.mjs");
-		return UUIDValidator.validateCompleteUUID(buffer);
+		return UUIDValidator.validateCompleteUUID(UUID._validationBytes(buffer));
 	}
 
 	/**
 	 * Generate a complete validation report for a UUID
-	 * @param {Uint8Array} buffer - UUID buffer to validate
+	 * @param {Uint8Array|string|UUID} buffer - UUID bytes, UUID string or UUID instance
 	 * @returns {Promise<object>} Detailed validation report
 	 */
 	static async validateDetailed(buffer) {
 		const { UUIDValidator } = await import("./lib/validators.mjs");
-		return UUIDValidator.generateValidationReport(buffer);
+		return UUIDValidator.generateValidationReport(UUID._validationBytes(buffer));
 	}
 
 	// RFC 4122 / RFC 9562 Standard UUID Methods
