@@ -34,6 +34,19 @@ const RANDOM = Uint8Array.from({ length: 16 }, (_, i) => (i * 37 + 11) & 255);
 const TIME = { msecs: MS, nsecs: 0, clockseq: 0x1234, node: [1, 2, 3, 4, 5, 6] };
 
 /**
+ * An RFC v7 id at a fixed time with fixed random bits (v7() takes no random input).
+ * @param {typeof import("../src/uuid.mjs").UUID} UUID - The UUID class
+ * @returns {string} UUID string
+ */
+function fixedV7(UUID) {
+	const bytes = UUID.v7({ msecs: MS, buf: new Uint8Array(16) });
+	bytes.set(RANDOM.subarray(6), 6);
+	bytes[6] = (bytes[6] & 0x0f) | 0x70; // version 7
+	bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10
+	return UUID.stringify(bytes);
+}
+
+/**
  * The ids the page describes, built from fixed inputs.
  * @param {typeof import("../src/uuid.mjs").UUID} UUID - The UUID class
  * @returns {Array<{ group: string, label: string, id: string, made: string }>} Ids
@@ -45,7 +58,7 @@ function sampleIds(UUID) {
 		["RFC 4122/9562", "RFC v4", UUID.v4({ random: RANDOM }), "UUID.v4({ random })"],
 		["RFC 4122/9562", "RFC v5", UUID.v5("example.com", UUID.DNS), 'UUID.v5("example.com", UUID.DNS)'],
 		["RFC 4122/9562", "RFC v6", UUID.v6(TIME), "UUID.v6({ msecs: 1700000000000, clockseq: 0x1234, node })"],
-		["RFC 4122/9562", "RFC v7", UUID.v7({ msecs: MS, random: RANDOM }), "UUID.v7({ msecs: 1700000000000, random })"],
+		["RFC 4122/9562", "RFC v7", fixedV7(UUID), "UUID.v7({ msecs: 1700000000000 }) with its random bits fixed"],
 		["RFC 4122/9562", "RFC v8", UUID.v8({ data: RANDOM }), "UUID.v8({ data })"],
 		["RFC 4122/9562", "Nil", UUID.NIL, "UUID.NIL"],
 		["RFC 4122/9562", "Max", UUID.MAX, "UUID.MAX"],

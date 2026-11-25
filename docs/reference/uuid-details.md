@@ -577,9 +577,9 @@ Made with `UUID.v6({ msecs: 1700000000000, clockseq: 0x1234, node })`.
 
 ## RFC v7
 
-`018bcfe5-6800-73fd-92b4-5cbb02b955a3`
+`018bcfe5-6800-790e-b358-7da2c7ec1136`
 
-Made with `UUID.v7({ msecs: 1700000000000, random })`.
+Made with `UUID.v7({ msecs: 1700000000000 }) with its random bits fixed`.
 
 <details open><summary><code>getInfo()</code></summary>
 
@@ -607,9 +607,9 @@ Made with `UUID.v7({ msecs: 1700000000000, random })`.
 
 | Field | Value |
 | --- | --- |
-| `getVariant()` | `4` |
+| `getVariant()` | `5` |
 | `getSubvariant()` | `2` |
-| `getVersion()` | `10` |
+| `getVersion()` | `12` |
 | `version()` | `7` |
 | `isUUID()` | `true` |
 | `isCLDMV()` | `false` |
@@ -672,7 +672,7 @@ Made with `UUID.v7({ msecs: 1700000000000, random })`.
 | Field | Value |
 | --- | --- |
 | `overallValid` | `true` |
-| `sections.bitLayout.bitFields.variant` | `4` |
+| `sections.bitLayout.bitFields.variant` | `5` |
 | `sections.bitLayout.bitFields.subvariant` | `null` |
 | `sections.bitLayout.bitFields.version` | `7` |
 | `sections.bitLayout.bitFields.issuerID` | `null` |
@@ -680,7 +680,7 @@ Made with `UUID.v7({ msecs: 1700000000000, random })`.
 | `sections.bitLayout.bitFields.timestampSegmentA` | `null` |
 | `sections.bitLayout.bitFields.timestampContinuation` | `null` |
 | `sections.entropy.entropyBits` | `74` |
-| `sections.entropy.analysis.bitBalance` | `0.527027027027027` |
+| `sections.entropy.analysis.bitBalance` | `0.5` |
 | `allErrors` | `[]` |
 | `allWarnings` | `[]` |
 
