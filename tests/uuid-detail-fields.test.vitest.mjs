@@ -47,6 +47,7 @@ const INFO_KEYS = [
 	"variantFamily",
 	"subvariant",
 	"version",
+	"fullVersion",
 	"variantIdentifier",
 	"issuerID",
 	"issuerCategory",
@@ -109,18 +110,19 @@ describe("getInfo() (#123)", () => {
 	});
 
 	test.each([
-		[RFC_V1, 5, 1, VECTOR_TICKS, "100ns"],
-		[RFC_V6, 5, 6, VECTOR_TICKS, "100ns"],
-		[RFC_V7, 4, 7, 1645557742000, "ms"]
-	])("RFC id %s reports its version and timestamp", (id, variant, version, timestamp, unit) => {
+		[RFC_V1, 1, VECTOR_TICKS, "100ns"],
+		[RFC_V6, 6, VECTOR_TICKS, "100ns"],
+		[RFC_V7, 7, 1645557742000, "ms"]
+	])("RFC id %s reports its version and timestamp", (id, version, timestamp, unit) => {
 		expect(new UUID(id).getInfo()).toEqual({
 			uuid: id,
 			isUUID: true,
 			isCLDMV: false,
-			variant,
+			variant: 2,
 			variantFamily: "RFC 4122/9562",
 			subvariant: null,
 			version,
+			fullVersion: `2.0.${version}`,
 			variantIdentifier: version,
 			issuerID: null,
 			issuerCategory: null,
@@ -148,12 +150,13 @@ describe("getInfo() (#123)", () => {
 	});
 
 	test.each([
-		[UUID.NIL, 0, 0],
-		[UUID.MAX, 7, 15]
-	])("%s is the RFC special id, not a custom one", (id, variant, version) => {
+		[UUID.NIL, 0],
+		[UUID.MAX, 15]
+	])("%s is the RFC special id, not a CLDMV one", (id, version) => {
 		const info = new UUID(id).getInfo();
 		expect(info.variantFamily).toBe("RFC 4122/9562");
-		expect(info.variant).toBe(variant);
+		expect(info.variant).toBe(2);
+		expect(info.fullVersion).toBe(`2.0.${version}`);
 		expect(info.isUUID).toBe(true);
 		expect(info.isCLDMV).toBe(false);
 		expect(info.version).toBe(version);
@@ -165,6 +168,7 @@ describe("getInfo() (#123)", () => {
 	test("a Microsoft id has a family and nothing else", () => {
 		const info = new UUID(MICROSOFT).getInfo();
 		expect(info.variant).toBe(6);
+		expect(info.fullVersion).toBe("6.0.0");
 		expect(info.variantFamily).toBe("Microsoft");
 		expect(info.isUUID).toBe(false);
 		expect(info.isCLDMV).toBe(false);
@@ -181,6 +185,7 @@ describe("getInfo() (#123)", () => {
 			variantFamily: "CLDMV",
 			subvariant: 0,
 			version: 4,
+			fullVersion: "7.0.4",
 			variantIdentifier: "TB",
 			issuerID: null,
 			issuerCategory: null,
@@ -225,6 +230,38 @@ describe("getInfo() (#123)", () => {
 		expect(uuid.isCLDMV()).toBe(isCLDMV);
 		expect(uuid.getInfo().isUUID).toBe(isUUID);
 		expect(uuid.getInfo().isCLDMV).toBe(isCLDMV);
+	});
+
+	test.each([
+		["RFC v1", RFC_V1, "2.0.1"],
+		["RFC v3", RFC_V3, "2.0.3"],
+		["RFC v4", RFC_V4, "2.0.4"],
+		["RFC v5", RFC_V5, "2.0.5"],
+		["RFC v6", RFC_V6, "2.0.6"],
+		["RFC v7", RFC_V7, "2.0.7"],
+		["RFC v8", RFC_V8, "2.0.8"],
+		["RFC variant, version 9", "919108f7-52d1-9320-9bac-f847db4148a8", "2.0.9"],
+		["Nil", UUID.NIL, "2.0.0"],
+		["Max", UUID.MAX, "2.0.15"],
+		["Microsoft", MICROSOFT, "6.0.0"],
+		["NCS (not Nil)", "919108f7-52d1-4320-1bac-f847db4148a8", "0.0.0"],
+		["TA v1", TA_V1, "7.0.1"],
+		["TB v4", TB_V4, "7.0.4"],
+		["TA", UUID.TA().toString(), "7.0.5"],
+		["TB", UUID.TB().toString(), "7.0.6"],
+		["IA", UUID.IA(100).toString(), "7.1.1"],
+		["reserved subvariant", reservedSubvariant(), "7.2.1"]
+	])("%s: fullVersion %s", (_label, id, fullVersion) => {
+		expect(new UUID(id).getInfo().fullVersion).toBe(fullVersion);
+	});
+
+	test("variant is the family's number, the same for every id of a family", () => {
+		// RFC v4 ids read 100 or 101 in bits 64-66 depending on a random bit
+		for (let i = 0; i < 32; i++) {
+			const uuid = new UUID(UUID.v4());
+			expect([4, 5]).toContain(uuid.getVariant());
+			expect(uuid.getInfo().variant).toBe(2);
+		}
 	});
 
 	test("the raw getters still read their bit positions", () => {

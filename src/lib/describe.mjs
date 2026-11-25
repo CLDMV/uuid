@@ -37,6 +37,13 @@ import { readTimestamp } from "./timestamp.mjs";
 
 export const RFC_FAMILY = "RFC 4122/9562";
 
+/**
+ * The variant number of each family: its prefix bits as a number (NCS 0, RFC 10 = 2,
+ * Microsoft 110 = 6, CLDMV 111 = 7). Unlike the raw bits 64-66, it doesn't change with
+ * the data bits that follow a shorter prefix.
+ */
+const FAMILY_VARIANT = { NCS: 0, [RFC_FAMILY]: 2, Microsoft: 6, CLDMV: 7 };
+
 /** 100-ns intervals between 1582-10-15 (the RFC v1/v6 epoch) and 1970-01-01. */
 const GREGORIAN_OFFSET_100NS = 122192928000000000n;
 
@@ -142,10 +149,11 @@ function cldmvIdentifier(subvariant, version) {
  * @returns {{
  *   isUUID: boolean,
  *   isCLDMV: boolean,
- *   variant: number,
+ *   variant: 0|2|6|7,
  *   variantFamily: "NCS"|"RFC 4122/9562"|"Microsoft"|"CLDMV",
  *   subvariant: number|null,
  *   version: number|null,
+ *   fullVersion: string,
  *   variantIdentifier: string|number|null,
  *   issuerID: number|null,
  *   issuerCategory: string|null,
@@ -157,14 +165,15 @@ function cldmvIdentifier(subvariant, version) {
  * }} Description; `timestamp` is a bigint here, callers convert it
  */
 export function describeBytes(bytes) {
-	const { variant, family, isCLDMV, special } = classify(bytes);
+	const { family, isCLDMV, special } = classify(bytes);
 	const info = {
 		isUUID: isCLDMV || special !== null,
 		isCLDMV,
-		variant,
+		variant: FAMILY_VARIANT[family],
 		variantFamily: family,
 		subvariant: null,
 		version: null,
+		fullVersion: "",
 		variantIdentifier: null,
 		issuerID: null,
 		issuerCategory: null,
@@ -207,6 +216,9 @@ export function describeBytes(bytes) {
 			}
 		}
 	}
+
+	// variant.subvariant.version, 0 for a part the id doesn't have
+	info.fullVersion = `${info.variant}.${info.subvariant ?? 0}.${info.version ?? 0}`;
 
 	if (info.timestamp !== null && info.timestampUnit !== null) {
 		info.date = toISODate(info.timestamp, info.timestampUnit);

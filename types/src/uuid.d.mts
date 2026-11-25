@@ -63,9 +63,9 @@ export type UUIDInfo = {
      */
     isCLDMV: boolean;
     /**
-     * - Bits 64-66 (7 for a CLDMV id, 4 or 5 for an RFC 4122/9562 UUID)
+     * - The variant as a number: NCS 0 (prefix 0), RFC 4122/9562 2 (prefix 10, Nil and Max included), Microsoft 6 (110), CLDMV 7 (111). {@link UUID#getVariant} gives the raw bits 64-66
      */
-    variant: number;
+    variant: 0 | 2 | 6 | 7;
     /**
      * - Family the variant bits select; the RFC Nil and Max ids are "RFC 4122/9562"
      */
@@ -78,6 +78,10 @@ export type UUIDInfo = {
      * - Bits 75-78 for a CLDMV id, bits 48-51 (the RFC version) for an RFC UUID, otherwise null
      */
     version: number | null;
+    /**
+     * - variant.subvariant.version as numbers, 0 for a part the id doesn't have: "2.0.4" for RFC v4, "7.0.6" for TB, "7.1.1" for IA, "6.0.0" for Microsoft
+     */
+    fullVersion: string;
     /**
      * - Same as {@link UUID#version}
      */
@@ -147,10 +151,11 @@ export type UUIDInfo = {
  * @property {string} uuid - Canonical string form
  * @property {boolean} isUUID - True for a well-formed UUID: an RFC 4122/9562 id with version 1-8, the Nil or Max id, or a CLDMV id
  * @property {boolean} isCLDMV - True for a CLDMV id (variant 111); the RFC Max id is not one
- * @property {number} variant - Bits 64-66 (7 for a CLDMV id, 4 or 5 for an RFC 4122/9562 UUID)
+ * @property {0|2|6|7} variant - The variant as a number: NCS 0 (prefix 0), RFC 4122/9562 2 (prefix 10, Nil and Max included), Microsoft 6 (110), CLDMV 7 (111). {@link UUID#getVariant} gives the raw bits 64-66
  * @property {"NCS"|"RFC 4122/9562"|"Microsoft"|"CLDMV"} variantFamily - Family the variant bits select; the RFC Nil and Max ids are "RFC 4122/9562"
  * @property {number|null} subvariant - Bits 67-68 for a CLDMV id, otherwise null
  * @property {number|null} version - Bits 75-78 for a CLDMV id, bits 48-51 (the RFC version) for an RFC UUID, otherwise null
+ * @property {string} fullVersion - variant.subvariant.version as numbers, 0 for a part the id doesn't have: "2.0.4" for RFC v4, "7.0.6" for TB, "7.1.1" for IA, "6.0.0" for Microsoft
  * @property {string|number|null} variantIdentifier - Same as {@link UUID#version}
  * @property {number|null} issuerID - Issuer ID for an Issuer Variant UUID, otherwise null
  * @property {string|null} issuerCategory - Issuer category name for an Issuer Variant UUID, otherwise null

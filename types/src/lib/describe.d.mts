@@ -40,10 +40,11 @@ export function toISODate(value: bigint, unit: "s" | "ms" | "100ns"): string | n
  * @returns {{
  *   isUUID: boolean,
  *   isCLDMV: boolean,
- *   variant: number,
+ *   variant: 0|2|6|7,
  *   variantFamily: "NCS"|"RFC 4122/9562"|"Microsoft"|"CLDMV",
  *   subvariant: number|null,
  *   version: number|null,
+ *   fullVersion: string,
  *   variantIdentifier: string|number|null,
  *   issuerID: number|null,
  *   issuerCategory: string|null,
@@ -57,10 +58,11 @@ export function toISODate(value: bigint, unit: "s" | "ms" | "100ns"): string | n
 export function describeBytes(bytes: Uint8Array): {
     isUUID: boolean;
     isCLDMV: boolean;
-    variant: number;
+    variant: 0 | 2 | 6 | 7;
     variantFamily: "NCS" | "RFC 4122/9562" | "Microsoft" | "CLDMV";
     subvariant: number | null;
     version: number | null;
+    fullVersion: string;
     variantIdentifier: string | number | null;
     issuerID: number | null;
     issuerCategory: string | null;

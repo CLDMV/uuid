@@ -112,6 +112,7 @@ console.log(info);
 //   variantFamily: "CLDMV",
 //   subvariant: 0,             // bits 67-68: 00 (Timestamp Variant)
 //   version: 5,                // bits 75-78: 0101 (v5 = seconds, full layout)
+//   fullVersion: "7.0.5",      // variant.subvariant.version
 //   variantIdentifier: "TA",
 //   issuerID: null,            // only Issuer Variants have one
 //   issuerCategory: null,
@@ -448,32 +449,33 @@ JSON.stringify(obj);
 
 ##### `uuid.getInfo()`
 
-Describes any UUID, CLDMV or RFC, with the same fields. A field the id's variant doesn't define is `null`.
+Describes any UUID, CLDMV or RFC, with the same fields. A field the id's variant doesn't define is `null`. `fullVersion` is `variant.subvariant.version` as numbers, with 0 for a part the id doesn't have; it identifies the kind of id and isn't meant to be compared like a semver version.
 
-| Field                                   | CLDMV id (variant `111`)      | RFC 4122/9562 id                                                                                           |
-| --------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `uuid`                                  | canonical string              | canonical string                                                                                           |
-| `isUUID`                                | `true`                        | `true` for version 1-8, Nil and Max; NCS, Microsoft and RFC-variant ids with version 0 or 9-15 are `false` |
-| `isCLDMV`                               | `true`                        | `false`                                                                                                    |
-| `variant`                               | bits 64-66: `7`               | bits 64-66: `4` or `5` (`10x`); Nil `0`, Max `7`                                                           |
-| `variantFamily`                         | `"CLDMV"`                     | `"RFC 4122/9562"` (Nil and Max included); other ids are `"NCS"` or `"Microsoft"`                           |
-| `subvariant`                            | bits 67-68                    | `null`                                                                                                     |
-| `version`                               | bits 75-78                    | bits 48-51, the RFC version                                                                                |
-| `variantIdentifier`                     | `"TA"`, `"TB"`, `"IA"`, ...   | the RFC version (Nil `0`, Max `15`)                                                                        |
-| `issuerID`, `issuerCategory`            | Issuer Variant only           | `null`                                                                                                     |
-| `timestamp`                             | TA: seconds, TB: milliseconds | v7: milliseconds, v1 and v6: 100-ns intervals, all on the Unix epoch; other versions `null`                |
-| `timestampUnit`                         | `"s"` or `"ms"`               | `"ms"` or `"100ns"`                                                                                        |
-| `date`                                  | ISO 8601 date of `timestamp`  | ISO 8601 date of `timestamp`                                                                               |
-| `isIssuerVariant`, `isTimestampVariant` | by subvariant                 | `false`                                                                                                    |
+| Field                                   | CLDMV id (variant `111`)                                               | RFC 4122/9562 id                                                                                                                           |
+| --------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `uuid`                                  | canonical string                                                       | canonical string                                                                                                                           |
+| `isUUID`                                | `true`                                                                 | `true` for version 1-8, Nil and Max; NCS, Microsoft and RFC-variant ids with version 0 or 9-15 are `false`                                 |
+| `isCLDMV`                               | `true`                                                                 | `false`                                                                                                                                    |
+| `variant`                               | `7` (prefix `111`)                                                     | `2` (prefix `10`), Nil and Max included; Microsoft `6`, NCS `0`. `getVariant()` returns the raw bits 64-66, which read 4 or 5 on an RFC id |
+| `variantFamily`                         | `"CLDMV"`                                                              | `"RFC 4122/9562"` (Nil and Max included); other ids are `"NCS"` or `"Microsoft"`                                                           |
+| `subvariant`                            | bits 67-68                                                             | `null`                                                                                                                                     |
+| `version`                               | bits 75-78                                                             | bits 48-51, the RFC version                                                                                                                |
+| `fullVersion`                           | `"7.<subvariant>.<version>"`: TA `"7.0.5"`, TB `"7.0.6"`, IA `"7.1.1"` | `"2.0.<version>"`: v4 `"2.0.4"`, Nil `"2.0.0"`, Max `"2.0.15"`; Microsoft `"6.0.0"`, NCS `"0.0.0"`                                         |
+| `variantIdentifier`                     | `"TA"`, `"TB"`, `"IA"`, ...                                            | the RFC version (Nil `0`, Max `15`)                                                                                                        |
+| `issuerID`, `issuerCategory`            | Issuer Variant only                                                    | `null`                                                                                                                                     |
+| `timestamp`                             | TA: seconds, TB: milliseconds                                          | v7: milliseconds, v1 and v6: 100-ns intervals, all on the Unix epoch; other versions `null`                                                |
+| `timestampUnit`                         | `"s"` or `"ms"`                                                        | `"ms"` or `"100ns"`                                                                                                                        |
+| `date`                                  | ISO 8601 date of `timestamp`                                           | ISO 8601 date of `timestamp`                                                                                                               |
+| `isIssuerVariant`, `isTimestampVariant` | by subvariant                                                          | `false`                                                                                                                                    |
 
 ```javascript
 UUID.TB(1700000000000).getInfo();
-// { uuid: "80000006-2f3f-...", isUUID: true, isCLDMV: true, variant: 7, variantFamily: "CLDMV", subvariant: 0, version: 6,
+// { uuid: "80000006-2f3f-...", isUUID: true, isCLDMV: true, variant: 7, variantFamily: "CLDMV", subvariant: 0, version: 6, fullVersion: "7.0.6",
 //   variantIdentifier: "TB", issuerID: null, issuerCategory: null, timestamp: 1700000000000, timestampUnit: "ms",
 //   date: "2023-11-14T22:13:20.000Z", isIssuerVariant: false, isTimestampVariant: true }
 
 new UUID("017f22e2-79b0-7cc3-98c4-dc0c0c07398f").getInfo(); // RFC v7
-// { uuid: "017f22e2-...", isUUID: true, isCLDMV: false, variant: 4, variantFamily: "RFC 4122/9562", subvariant: null, version: 7,
+// { uuid: "017f22e2-...", isUUID: true, isCLDMV: false, variant: 2, variantFamily: "RFC 4122/9562", subvariant: null, version: 7, fullVersion: "2.0.7",
 //   variantIdentifier: 7, issuerID: null, issuerCategory: null, timestamp: 1645557742000, timestampUnit: "ms",
 //   date: "2022-02-22T19:22:22.000Z", isIssuerVariant: false, isTimestampVariant: false }
 ```
