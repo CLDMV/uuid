@@ -23,6 +23,8 @@
  *  - dist/main.mjs — the deprecated "./main" alias (src/main.mjs). ./index.mjs is external, so
  *    it imports dist/index.mjs instead of carrying a second copy of the bundle.
  *  - dist/lib/{rng,bytes,hash}{,-browser}.mjs — the "./rng", "./bytes" and "./hash" subpaths.
+ *  - dist/lib/entropy-sources.mjs — the "./entropy" subpath. It reaches rng/bytes/hash through
+ *    their subpaths too, so one file serves Node and browsers.
  *
  * The library reaches rng/bytes/hash through those subpaths (`@cldmv/uuid/rng`, …), and they
  * stay external, so the consumer's resolver (or bundler) still picks the "browser" variant
@@ -81,7 +83,8 @@ export default defineConfig([
 			"lib/bytes": "src/lib/bytes.mjs",
 			"lib/bytes-browser": "src/lib/bytes-browser.mjs",
 			"lib/hash": "src/lib/hash.mjs",
-			"lib/hash-browser": "src/lib/hash-browser.mjs"
+			"lib/hash-browser": "src/lib/hash-browser.mjs",
+			"lib/entropy-sources": "src/lib/entropy-sources.mjs"
 		}
 	}
 ]);

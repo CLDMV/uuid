@@ -27,8 +27,8 @@ import crypto from "crypto";
 import { randomBytes as randomBytesBrowser } from "../src/lib/rng-browser.mjs";
 import { fromHex as fromHexBrowser, toHex as toHexBrowser, toBufferLike as toBufferLikeBrowser } from "../src/lib/bytes-browser.mjs";
 import { fromHex as fromHexNode, toHex as toHexNode } from "@cldmv/uuid/bytes";
-import { md5 as md5Browser, sha1 as sha1Browser } from "../src/lib/hash-browser.mjs";
-import { md5 as md5Node, sha1 as sha1Node } from "@cldmv/uuid/hash";
+import { md5 as md5Browser, sha1 as sha1Browser, sha256 as sha256Browser } from "../src/lib/hash-browser.mjs";
+import { md5 as md5Node, sha1 as sha1Node, sha256 as sha256Node } from "@cldmv/uuid/hash";
 
 describe("rng-browser", () => {
 	test("returns a Uint8Array of the requested length", () => {
@@ -115,6 +115,19 @@ describe("hash-browser", () => {
 			const nodeSha1 = crypto.createHash("sha1").update(input, "utf8").digest("hex");
 			expect(toHexBrowser(md5Browser(empty, input))).toBe(nodeMd5);
 			expect(toHexBrowser(sha1Browser(empty, input))).toBe(nodeSha1);
+		}
+	});
+
+	test("sha256 matches FIPS 180-4 vectors and node:crypto", () => {
+		const encoder = new TextEncoder();
+		expect(toHexBrowser(sha256Browser(new Uint8Array(0)))).toBe("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+		expect(toHexBrowser(sha256Browser(encoder.encode("abc")))).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+		const lengths = [1, 55, 56, 63, 64, 65, 119, 120, 1000];
+		for (const length of lengths) {
+			const bytes = new Uint8Array(length).map((_, i) => (i * 31 + 7) & 0xff);
+			const expected = crypto.createHash("sha256").update(bytes).digest("hex");
+			expect(toHexBrowser(sha256Browser(bytes))).toBe(expected);
+			expect(toHexNode(sha256Node(bytes))).toBe(expected);
 		}
 	});
 

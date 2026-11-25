@@ -60,6 +60,14 @@
 			"types": "./types/src/lib/hash.d.mts",
 			"import": "./dist/lib/hash.mjs"
 		},
+		"./entropy": {
+			"uuid-dev": {
+				"types": "./types/src/lib/entropy-sources.d.mts",
+				"import": "./src/lib/entropy-sources.mjs"
+			},
+			"types": "./types/src/lib/entropy-sources.d.mts",
+			"import": "./dist/lib/entropy-sources.mjs"
+		},
 		"./package.json": "./package.json"
 	},
 	"imports": {

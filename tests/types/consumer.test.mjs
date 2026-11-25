@@ -204,7 +204,8 @@ export { sameDefault, sameMain, sameMainLower, category };
 		path.join(consumerDir, "subpaths.mts"),
 		`import { randomBytes } from "@cldmv/uuid/rng";
 import { fromHex, toHex, toBufferLike } from "@cldmv/uuid/bytes";
-import { md5, sha1 } from "@cldmv/uuid/hash";
+import { md5, sha1, sha256 } from "@cldmv/uuid/hash";
+import { EntropySource } from "@cldmv/uuid/entropy";
 
 const random: Uint8Array = randomBytes(16);
 const hex: string = toHex(random);
@@ -212,8 +213,15 @@ const back: Uint8Array = fromHex(hex);
 const copy: Uint8Array = toBufferLike(back);
 const md5Digest: Uint8Array = md5(random, "name");
 const sha1Digest: Uint8Array = sha1(random, "name");
+const sha256Digest: Uint8Array = sha256(random);
+const secure: Uint8Array = EntropySource.generateSecureBytes(16);
+const bits: number = EntropySource.calculateRequiredEntropy(1e-9, 1_000_000);
+const quality: boolean = EntropySource.validateEntropyQuality(secure).passed;
+const mixed: Uint8Array = EntropySource.mixEntropySources([secure, random]);
+const stamped: Uint8Array = EntropySource.createTimestampIndependentEntropy(new Date());
+const shannon: number = EntropySource.estimateShannonEntropy(stamped);
 
-export { random, hex, back, copy, md5Digest, sha1Digest };
+export { random, hex, back, copy, md5Digest, sha1Digest, sha256Digest, secure, bits, quality, mixed, stamped, shannon };
 `
 	);
 
@@ -351,14 +359,14 @@ test("the README TypeScript example type-checks", () => {
 	assert.equal(status, 0, output);
 });
 
-test("the ./rng, ./bytes and ./hash subpaths type-check", () => {
+test("the ./rng, ./bytes, ./hash and ./entropy subpaths type-check", () => {
 	// The Node variants of these modules return Buffers, so they need @types/node like any
 	// other Node-only declaration.
 	const { status, output } = compile("subpaths", ["subpaths.mts"], ["node"]);
 	assert.equal(status, 0, output);
 });
 
-test("the browser variants of ./rng, ./bytes and ./hash type-check without @types/node", () => {
+test("the browser variants of ./rng, ./bytes and ./hash, and ./entropy, type-check without @types/node", () => {
 	// With the "browser" condition the browser declarations are picked, which return plain
 	// Uint8Arrays and must not need Node's globals.
 	// main.mts is included too: with "browser" the main entry gets the Uint8Array flavour even

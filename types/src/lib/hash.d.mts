@@ -12,4 +12,10 @@ export function md5(namespaceBytes: Uint8Array, name: string): Uint8Array;
  * @returns {Uint8Array} 20-byte digest
  */
 export function sha1(namespaceBytes: Uint8Array, name: string): Uint8Array;
+/**
+ * Compute a SHA-256 digest of `bytes`.
+ * @param {Uint8Array} bytes - Message to hash
+ * @returns {Uint8Array} 32-byte digest
+ */
+export function sha256(bytes: Uint8Array): Uint8Array;
 //# sourceMappingURL=hash.d.mts.map
