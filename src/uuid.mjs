@@ -88,11 +88,12 @@ import { entropy as buildEntropy } from "./lib/entropy.mjs";
  * Result of {@link UUID#getInfo}. Every UUID gets every field; a field its variant doesn't define is null.
  * @typedef {object} UUIDInfo
  * @property {string} uuid - Canonical string form
- * @property {boolean} isUUID - True for a custom-variant UUID (variant 111); the RFC Max id is not one
- * @property {number} variant - Bits 64-66 (7 for a custom UUID, 4 or 5 for an RFC 4122/9562 UUID)
- * @property {"NCS"|"RFC 4122/9562"|"Microsoft"|"Custom"} variantFamily - Family the variant bits select; the RFC Nil and Max ids are "RFC 4122/9562"
- * @property {number|null} subvariant - Bits 67-68 for a custom UUID, otherwise null
- * @property {number|null} version - Bits 75-78 for a custom UUID, bits 48-51 (the RFC version) for an RFC UUID, otherwise null
+ * @property {boolean} isUUID - True for a well-formed UUID: an RFC 4122/9562 id with version 1-8, the Nil or Max id, or a CLDMV id
+ * @property {boolean} isCLDMV - True for a CLDMV id (variant 111); the RFC Max id is not one
+ * @property {number} variant - Bits 64-66 (7 for a CLDMV id, 4 or 5 for an RFC 4122/9562 UUID)
+ * @property {"NCS"|"RFC 4122/9562"|"Microsoft"|"CLDMV"} variantFamily - Family the variant bits select; the RFC Nil and Max ids are "RFC 4122/9562"
+ * @property {number|null} subvariant - Bits 67-68 for a CLDMV id, otherwise null
+ * @property {number|null} version - Bits 75-78 for a CLDMV id, bits 48-51 (the RFC version) for an RFC UUID, otherwise null
  * @property {string|number|null} variantIdentifier - Same as {@link UUID#version}
  * @property {number|null} issuerID - Issuer ID for an Issuer Variant UUID, otherwise null
  * @property {string|null} issuerCategory - Issuer category name for an Issuer Variant UUID, otherwise null
@@ -440,12 +441,22 @@ class UUID {
 	}
 
 	/**
-	 * Check if this is a custom-variant UUID (variant bits 64-66 = 111). The RFC 9562 Max id,
-	 * whose bits are all ones, is an RFC id and returns false.
-	 * @returns {boolean} True for a custom-variant UUID
+	 * Check if this is a well-formed UUID: an RFC 4122/9562 id with a defined version (1-8),
+	 * the RFC Nil or Max id, or a CLDMV id (variant 111). NCS and Microsoft ids, and RFC-variant
+	 * ids with version 0 or 9-15, return false.
+	 * @returns {boolean} True for a well-formed UUID
 	 */
 	isUUID() {
-		return classify(this._buffer).isCustom;
+		return describeBytes(this._buffer).isUUID;
+	}
+
+	/**
+	 * Check if this is a CLDMV id (variant bits 64-66 = 111): TA, TB, IA or a reserved
+	 * subvariant. The RFC Max id, whose bits are all ones, is an RFC id and returns false.
+	 * @returns {boolean} True for a CLDMV id
+	 */
+	isCLDMV() {
+		return classify(this._buffer).isCLDMV;
 	}
 
 	/**
@@ -453,7 +464,7 @@ class UUID {
 	 * @returns {boolean} True if issuer variant
 	 */
 	isIssuerVariant() {
-		return this.isUUID() && this.getSubvariant() === SUBVARIANT_ISSUER;
+		return this.isCLDMV() && this.getSubvariant() === SUBVARIANT_ISSUER;
 	}
 
 	/**
@@ -461,11 +472,11 @@ class UUID {
 	 * @returns {boolean} True if timestamp variant
 	 */
 	isTimestampVariant() {
-		return this.isUUID() && this.getSubvariant() === SUBVARIANT_TIMESTAMP;
+		return this.isCLDMV() && this.getSubvariant() === SUBVARIANT_TIMESTAMP;
 	}
 
 	/**
-	 * Get the version/variant identifier (TA, TB, IA for custom variants, or RFC version number)
+	 * Get the version/variant identifier (TA, TB, IA for CLDMV ids, or RFC version number)
 	 * @returns {string|number|null} Version identifier (e.g., "TA", "TB", "IA", 1-8 for RFC, 0 for Nil, 15 for Max, or null if invalid)
 	 * @example
 	 * uuid.version(); // => "TA" for Timestamp v5 (and the older v3 and v1)
@@ -522,7 +533,7 @@ class UUID {
 
 	/**
 	 * Compare two UUIDs for sorting by time, exact across the whole 70-bit timestamp range and across layouts.
-	 * UUIDs that hold a timestamp come first, ordered by that time on one scale: TA (seconds), TB (milliseconds), and RFC versions 7 (milliseconds) and 1 and 6 (100-ns intervals). A TA id stands for the start of its second. Ties fall back to byte order. Every other UUID comes after them in byte order. Use it where byte order isn't enough: a mix of layouts (versions 3/4 next to 5/6), version 3/4 ids past ±(2^63 - 1), or custom and RFC ids together.
+	 * UUIDs that hold a timestamp come first, ordered by that time on one scale: TA (seconds), TB (milliseconds), and RFC versions 7 (milliseconds) and 1 and 6 (100-ns intervals). A TA id stands for the start of its second. Ties fall back to byte order. Every other UUID comes after them in byte order. Use it where byte order isn't enough: a mix of layouts (versions 3/4 next to 5/6), version 3/4 ids past ±(2^63 - 1), or CLDMV and RFC ids together.
 	 * @param {UUID|string|Uint8Array} a - First UUID (instance, string or 16-byte buffer)
 	 * @param {UUID|string|Uint8Array} b - Second UUID (instance, string or 16-byte buffer)
 	 * @returns {-1|0|1} Negative when a sorts first, positive when b does, 0 when the bytes are equal
@@ -901,9 +912,9 @@ class UUID {
 	}
 
 	/**
-	 * Detect version/variant identifier of UUID (handles both RFC and custom variants)
+	 * Detect version/variant identifier of UUID (handles both RFC and CLDMV ids)
 	 * @param {string|Uint8Array|UUID} uuid - UUID string, buffer, or UUID instance
-	 * @returns {string|number|null} Version identifier (e.g., "TA", "TB", "IA" for custom, 1-8 for RFC, or null if invalid)
+	 * @returns {string|number|null} Version identifier (e.g., "TA", "TB", "IA" for CLDMV ids, 1-8 for RFC, or null if invalid)
 	 * @example
 	 * UUID.version(uuidString); // => "TA" for Timestamp v1
 	 * UUID.version(uuidString); // => "TB" for Timestamp v2

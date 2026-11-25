@@ -57,7 +57,8 @@ describe("UUIDValidator", () => {
 		const buffer = Buffer.from("123e4567e89b12d3a456426614174000", "hex");
 		const result = UUIDValidator.validateCompleteUUID(buffer);
 
-		expect(result.isUUID).toBe(false);
+		expect(result.isUUID).toBe(true);
+		expect(result.isCLDMV).toBe(false);
 		expect(result.isValid).toBe(true);
 		expect(result.warnings).toEqual([]);
 		expect(result.fields.variantFamily).toBe("RFC 4122/9562");
@@ -444,7 +445,8 @@ describe("UUID.validate / validateDetailed input forms (#119)", () => {
 		const id = UUID.v4();
 		const report = await UUID.validateDetailed(id);
 		expect(report.uuidString).toBe(id);
-		expect(report.sections.complete.isUUID).toBe(false);
+		expect(report.sections.complete.isUUID).toBe(true);
+		expect(report.sections.complete.isCLDMV).toBe(false);
 	});
 
 	test("rejects malformed input with a clear error", async () => {

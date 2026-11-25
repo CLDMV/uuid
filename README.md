@@ -106,9 +106,10 @@ const info = taUUID.getInfo();
 console.log(info);
 // {
 //   uuid: "80000000-01ac-...",
-//   isUUID: true,              // custom variant (bits 64-66 = 111)
+//   isUUID: true,              // a well-formed UUID
+//   isCLDMV: true,             // a CLDMV id (bits 64-66 = 111)
 //   variant: 7,
-//   variantFamily: "Custom",
+//   variantFamily: "CLDMV",
 //   subvariant: 0,             // bits 67-68: 00 (Timestamp Variant)
 //   version: 5,                // bits 75-78: 0101 (v5 = seconds, full layout)
 //   variantIdentifier: "TA",
@@ -447,31 +448,32 @@ JSON.stringify(obj);
 
 ##### `uuid.getInfo()`
 
-Describes any UUID, custom or RFC, with the same fields. A field the id's variant doesn't define is `null`.
+Describes any UUID, CLDMV or RFC, with the same fields. A field the id's variant doesn't define is `null`.
 
-| Field                                   | Custom id (variant `111`)     | RFC 4122/9562 id                                                                            |
-| --------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------- |
-| `uuid`                                  | canonical string              | canonical string                                                                            |
-| `isUUID`                                | `true`                        | `false`                                                                                     |
-| `variant`                               | bits 64-66: `7`               | bits 64-66: `4` or `5` (`10x`); Nil `0`, Max `7`                                            |
-| `variantFamily`                         | `"Custom"`                    | `"RFC 4122/9562"` (Nil and Max included); other ids are `"NCS"` or `"Microsoft"`            |
-| `subvariant`                            | bits 67-68                    | `null`                                                                                      |
-| `version`                               | bits 75-78                    | bits 48-51, the RFC version                                                                 |
-| `variantIdentifier`                     | `"TA"`, `"TB"`, `"IA"`, ...   | the RFC version (Nil `0`, Max `15`)                                                         |
-| `issuerID`, `issuerCategory`            | Issuer Variant only           | `null`                                                                                      |
-| `timestamp`                             | TA: seconds, TB: milliseconds | v7: milliseconds, v1 and v6: 100-ns intervals, all on the Unix epoch; other versions `null` |
-| `timestampUnit`                         | `"s"` or `"ms"`               | `"ms"` or `"100ns"`                                                                         |
-| `date`                                  | ISO 8601 date of `timestamp`  | ISO 8601 date of `timestamp`                                                                |
-| `isIssuerVariant`, `isTimestampVariant` | by subvariant                 | `false`                                                                                     |
+| Field                                   | CLDMV id (variant `111`)      | RFC 4122/9562 id                                                                                           |
+| --------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `uuid`                                  | canonical string              | canonical string                                                                                           |
+| `isUUID`                                | `true`                        | `true` for version 1-8, Nil and Max; NCS, Microsoft and RFC-variant ids with version 0 or 9-15 are `false` |
+| `isCLDMV`                               | `true`                        | `false`                                                                                                    |
+| `variant`                               | bits 64-66: `7`               | bits 64-66: `4` or `5` (`10x`); Nil `0`, Max `7`                                                           |
+| `variantFamily`                         | `"CLDMV"`                     | `"RFC 4122/9562"` (Nil and Max included); other ids are `"NCS"` or `"Microsoft"`                           |
+| `subvariant`                            | bits 67-68                    | `null`                                                                                                     |
+| `version`                               | bits 75-78                    | bits 48-51, the RFC version                                                                                |
+| `variantIdentifier`                     | `"TA"`, `"TB"`, `"IA"`, ...   | the RFC version (Nil `0`, Max `15`)                                                                        |
+| `issuerID`, `issuerCategory`            | Issuer Variant only           | `null`                                                                                                     |
+| `timestamp`                             | TA: seconds, TB: milliseconds | v7: milliseconds, v1 and v6: 100-ns intervals, all on the Unix epoch; other versions `null`                |
+| `timestampUnit`                         | `"s"` or `"ms"`               | `"ms"` or `"100ns"`                                                                                        |
+| `date`                                  | ISO 8601 date of `timestamp`  | ISO 8601 date of `timestamp`                                                                               |
+| `isIssuerVariant`, `isTimestampVariant` | by subvariant                 | `false`                                                                                                    |
 
 ```javascript
 UUID.TB(1700000000000).getInfo();
-// { uuid: "80000006-2f3f-...", isUUID: true, variant: 7, variantFamily: "Custom", subvariant: 0, version: 6,
+// { uuid: "80000006-2f3f-...", isUUID: true, isCLDMV: true, variant: 7, variantFamily: "CLDMV", subvariant: 0, version: 6,
 //   variantIdentifier: "TB", issuerID: null, issuerCategory: null, timestamp: 1700000000000, timestampUnit: "ms",
 //   date: "2023-11-14T22:13:20.000Z", isIssuerVariant: false, isTimestampVariant: true }
 
 new UUID("017f22e2-79b0-7cc3-98c4-dc0c0c07398f").getInfo(); // RFC v7
-// { uuid: "017f22e2-...", isUUID: false, variant: 4, variantFamily: "RFC 4122/9562", subvariant: null, version: 7,
+// { uuid: "017f22e2-...", isUUID: true, isCLDMV: false, variant: 4, variantFamily: "RFC 4122/9562", subvariant: null, version: 7,
 //   variantIdentifier: 7, issuerID: null, issuerCategory: null, timestamp: 1645557742000, timestampUnit: "ms",
 //   date: "2022-02-22T19:22:22.000Z", isIssuerVariant: false, isTimestampVariant: false }
 ```
@@ -569,11 +571,21 @@ const category2 = ia2.getIssuerCategory(); // => "Category A (Well-Recognized Te
 
 ##### `uuid.isUUID()`
 
-Check if the UUID uses the custom variant (`111`). The RFC Max UUID (all ones) is an RFC id and returns `false`.
+Check if the id is a well-formed UUID: an RFC 4122/9562 id with a defined version (1-8), the RFC Nil or Max id, or a CLDMV id. NCS and Microsoft ids, and RFC-variant ids with version 0 or 9-15, return `false`.
 
 ```javascript
 UUID.TA().isUUID(); // => true
-new UUID(UUID.v4()).isUUID(); // => false
+new UUID(UUID.v4()).isUUID(); // => true
+new UUID("00000000-0000-0000-c000-000000000046").isUUID(); // => false (Microsoft variant)
+```
+
+##### `uuid.isCLDMV()`
+
+Check if the id is a CLDMV id: variant bits 64-66 are `111` (TA, TB, IA or a reserved subvariant). The RFC Max id, whose bits are all ones, is an RFC id and returns `false`.
+
+```javascript
+UUID.TA().isCLDMV(); // => true
+new UUID(UUID.v4()).isCLDMV(); // => false
 ```
 
 ##### `uuid.isTimestampVariant()`
@@ -654,7 +666,7 @@ ids.sort(UUID.compare).map((id) => id.getVersion()); // => [5, 4, 6]
 
 Check a UUID against the specification. Both are async and take a UUID string, a `UUID` or 16 bytes.
 
-`validate()` resolves to `{ isValid, isUUID, errors, warnings, fields }`. `fields` has the same keys for every id: the `getInfo()` fields (with `timestamp` as a bigint, without `uuid`) plus the raw Timestamp Variant bit fields `timestampLayout` (`"full"`, `"ordered"` or `"legacy"`), `timestampSign`, `timestampSegmentA` (bits 1-63), `timestampContinuation` (bits 69-74) and `timestampMagnitude`, and `isImmutableReserved` for issuer IDs 0, 1 and 404. Fields that don't apply are `null`. Errors come from a custom id that breaks the specification; warnings flag a reserved subvariant, an issuer ID in the future RFC range (512-1023) or poor entropy.
+`validate()` resolves to `{ isValid, isUUID, isCLDMV, errors, warnings, fields }`. `fields` has the same keys for every id: the `getInfo()` fields (with `timestamp` as a bigint, without `uuid`) plus the raw Timestamp Variant bit fields `timestampLayout` (`"full"`, `"ordered"` or `"legacy"`), `timestampSign`, `timestampSegmentA` (bits 1-63), `timestampContinuation` (bits 69-74) and `timestampMagnitude`, and `isImmutableReserved` for issuer IDs 0, 1 and 404. Fields that don't apply are `null`. Errors come from a CLDMV id that breaks the specification; warnings flag a reserved subvariant, an issuer ID in the future RFC range (512-1023) or poor entropy.
 
 `validateDetailed()` adds `sections.bitLayout` (`variant`, `subvariant`, `version`, `issuerID`, `timestampSign`, `timestampSegmentA`, `timestampContinuation`, again `null` where they don't apply) and `sections.entropy`: `entropyBits` counts the random bits (49 for TA/TB, 109 for IA, 122 for RFC v4, 74 for RFC v7, `null` where there is no random field) and `analysis.bitBalance` is the share of them set to 1.
 

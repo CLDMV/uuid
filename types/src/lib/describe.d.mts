@@ -2,12 +2,12 @@
  * The variant bits and family of a UUID. The RFC 9562 Nil (all zeros) and Max (all
  * ones) ids belong to the RFC family even though their variant bits read 000 and 111.
  * @param {Uint8Array} bytes - 16 UUID bytes
- * @returns {{ variant: number, family: "NCS"|"RFC 4122/9562"|"Microsoft"|"Custom", isCustom: boolean, special: "nil"|"max"|null }} Classification
+ * @returns {{ variant: number, family: "NCS"|"RFC 4122/9562"|"Microsoft"|"CLDMV", isCLDMV: boolean, special: "nil"|"max"|null }} Classification
  */
 export function classify(bytes: Uint8Array): {
     variant: number;
-    family: "NCS" | "RFC 4122/9562" | "Microsoft" | "Custom";
-    isCustom: boolean;
+    family: "NCS" | "RFC 4122/9562" | "Microsoft" | "CLDMV";
+    isCLDMV: boolean;
     special: "nil" | "max" | null;
 };
 /**
@@ -39,8 +39,9 @@ export function toISODate(value: bigint, unit: "s" | "ms" | "100ns"): string | n
  * @param {Uint8Array} bytes - 16 UUID bytes
  * @returns {{
  *   isUUID: boolean,
+ *   isCLDMV: boolean,
  *   variant: number,
- *   variantFamily: "NCS"|"RFC 4122/9562"|"Microsoft"|"Custom",
+ *   variantFamily: "NCS"|"RFC 4122/9562"|"Microsoft"|"CLDMV",
  *   subvariant: number|null,
  *   version: number|null,
  *   variantIdentifier: string|number|null,
@@ -55,8 +56,9 @@ export function toISODate(value: bigint, unit: "s" | "ms" | "100ns"): string | n
  */
 export function describeBytes(bytes: Uint8Array): {
     isUUID: boolean;
+    isCLDMV: boolean;
     variant: number;
-    variantFamily: "NCS" | "RFC 4122/9562" | "Microsoft" | "Custom";
+    variantFamily: "NCS" | "RFC 4122/9562" | "Microsoft" | "CLDMV";
     subvariant: number | null;
     version: number | null;
     variantIdentifier: string | number | null;

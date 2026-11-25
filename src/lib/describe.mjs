@@ -60,15 +60,15 @@ function every(bytes, value) {
  * The variant bits and family of a UUID. The RFC 9562 Nil (all zeros) and Max (all
  * ones) ids belong to the RFC family even though their variant bits read 000 and 111.
  * @param {Uint8Array} bytes - 16 UUID bytes
- * @returns {{ variant: number, family: "NCS"|"RFC 4122/9562"|"Microsoft"|"Custom", isCustom: boolean, special: "nil"|"max"|null }} Classification
+ * @returns {{ variant: number, family: "NCS"|"RFC 4122/9562"|"Microsoft"|"CLDMV", isCLDMV: boolean, special: "nil"|"max"|null }} Classification
  */
 export function classify(bytes) {
 	const variant = BitUtils.getBitsAsNumber(bytes, 64, 3);
 	let special = null;
 	if (variant === 0 && every(bytes, 0x00)) special = "nil";
 	else if (variant === VARIANT_BITS && every(bytes, 0xff)) special = "max";
-	const isCustom = variant === VARIANT_BITS && special === null;
-	return { variant, family: special ? RFC_FAMILY : variantFamily(variant), isCustom, special };
+	const isCLDMV = variant === VARIANT_BITS && special === null;
+	return { variant, family: special ? RFC_FAMILY : variantFamily(variant), isCLDMV, special };
 }
 
 /**
@@ -118,12 +118,12 @@ export function toISODate(value, unit) {
 }
 
 /**
- * Name of a custom-variant id ("TA", "TB", "IA", ...).
+ * Name of a CLDMV id ("TA", "TB", "IA", ...).
  * @param {number} subvariant - Bits 67-68
  * @param {number} version - Bits 75-78
  * @returns {string} Identifier
  */
-function customIdentifier(subvariant, version) {
+function cldmvIdentifier(subvariant, version) {
 	if (subvariant === SUBVARIANT_TIMESTAMP) {
 		if (version === 1 || version === 3 || version === 5) return "TA";
 		if (version === 2 || version === 4 || version === 6) return "TB";
@@ -141,8 +141,9 @@ function customIdentifier(subvariant, version) {
  * @param {Uint8Array} bytes - 16 UUID bytes
  * @returns {{
  *   isUUID: boolean,
+ *   isCLDMV: boolean,
  *   variant: number,
- *   variantFamily: "NCS"|"RFC 4122/9562"|"Microsoft"|"Custom",
+ *   variantFamily: "NCS"|"RFC 4122/9562"|"Microsoft"|"CLDMV",
  *   subvariant: number|null,
  *   version: number|null,
  *   variantIdentifier: string|number|null,
@@ -156,9 +157,10 @@ function customIdentifier(subvariant, version) {
  * }} Description; `timestamp` is a bigint here, callers convert it
  */
 export function describeBytes(bytes) {
-	const { variant, family, isCustom, special } = classify(bytes);
+	const { variant, family, isCLDMV, special } = classify(bytes);
 	const info = {
-		isUUID: isCustom,
+		isUUID: isCLDMV || special !== null,
+		isCLDMV,
 		variant,
 		variantFamily: family,
 		subvariant: null,
@@ -173,12 +175,12 @@ export function describeBytes(bytes) {
 		isTimestampVariant: false
 	};
 
-	if (isCustom) {
+	if (isCLDMV) {
 		const subvariant = BitUtils.getBitsAsNumber(bytes, 67, 2);
 		const version = BitUtils.getBitsAsNumber(bytes, VERSION_START_BIT, VERSION_BIT_COUNT);
 		info.subvariant = subvariant;
 		info.version = version;
-		info.variantIdentifier = customIdentifier(subvariant, version);
+		info.variantIdentifier = cldmvIdentifier(subvariant, version);
 		if (subvariant === SUBVARIANT_ISSUER) {
 			info.isIssuerVariant = true;
 			info.issuerID = BitUtils.getBitsAsNumber(bytes, ISSUER_ID_START_BIT, ISSUER_ID_BIT_COUNT);
@@ -194,6 +196,8 @@ export function describeBytes(bytes) {
 		// Nil reads as 0 and Max as 15; any other RFC id needs a defined version (1-8)
 		if (special || (version >= 1 && version <= 8)) {
 			info.variantIdentifier = version;
+			// A well-formed RFC id: a defined version, or the Nil / Max id
+			info.isUUID = true;
 		}
 		if (!special) {
 			const rfcTime = readRfcTimestamp(bytes, version);

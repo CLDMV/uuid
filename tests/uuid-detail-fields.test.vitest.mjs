@@ -42,6 +42,7 @@ const MICROSOFT = "00000000-0000-0000-c000-000000000046"; // variant 110 (IUnkno
 const INFO_KEYS = [
 	"uuid",
 	"isUUID",
+	"isCLDMV",
 	"variant",
 	"variantFamily",
 	"subvariant",
@@ -114,7 +115,8 @@ describe("getInfo() (#123)", () => {
 	])("RFC id %s reports its version and timestamp", (id, variant, version, timestamp, unit) => {
 		expect(new UUID(id).getInfo()).toEqual({
 			uuid: id,
-			isUUID: false,
+			isUUID: true,
+			isCLDMV: false,
 			variant,
 			variantFamily: "RFC 4122/9562",
 			subvariant: null,
@@ -152,7 +154,8 @@ describe("getInfo() (#123)", () => {
 		const info = new UUID(id).getInfo();
 		expect(info.variantFamily).toBe("RFC 4122/9562");
 		expect(info.variant).toBe(variant);
-		expect(info.isUUID).toBe(false);
+		expect(info.isUUID).toBe(true);
+		expect(info.isCLDMV).toBe(false);
 		expect(info.version).toBe(version);
 		expect(info.variantIdentifier).toBe(version);
 		expect(info.subvariant).toBe(null);
@@ -163,6 +166,8 @@ describe("getInfo() (#123)", () => {
 		const info = new UUID(MICROSOFT).getInfo();
 		expect(info.variant).toBe(6);
 		expect(info.variantFamily).toBe("Microsoft");
+		expect(info.isUUID).toBe(false);
+		expect(info.isCLDMV).toBe(false);
 		expect(info.version).toBe(null);
 		expect(info.variantIdentifier).toBe(null);
 	});
@@ -171,8 +176,9 @@ describe("getInfo() (#123)", () => {
 		expect(new UUID(TB_V4).getInfo()).toEqual({
 			uuid: TB_V4,
 			isUUID: true,
+			isCLDMV: true,
 			variant: 7,
-			variantFamily: "Custom",
+			variantFamily: "CLDMV",
 			subvariant: 0,
 			version: 4,
 			variantIdentifier: "TB",
@@ -194,12 +200,31 @@ describe("getInfo() (#123)", () => {
 
 	test("Issuer Variant ids report their issuer and no timestamp", () => {
 		const info = UUID.IA(100).getInfo();
-		expect(info.variantFamily).toBe("Custom");
+		expect(info.variantFamily).toBe("CLDMV");
 		expect(info.subvariant).toBe(1);
 		expect(info.issuerID).toBe(100);
 		expect(info.issuerCategory).toBe("Category A (Well-Recognized Tech Entities)");
 		expect(info.timestamp).toBe(null);
 		expect(info.timestampUnit).toBe(null);
+	});
+
+	test.each([
+		["RFC v1-8", RFC_V4, true, false],
+		["Nil", UUID.NIL, true, false],
+		["Max", UUID.MAX, true, false],
+		["TA", TA_V1, true, true],
+		["IA", UUID.IA(100).toString(), true, true],
+		["reserved subvariant", reservedSubvariant(), true, true],
+		["RFC variant, version 0", "919108f7-52d1-0320-9bac-f847db4148a8", false, false],
+		["RFC variant, version 9", "919108f7-52d1-9320-9bac-f847db4148a8", false, false],
+		["NCS (not Nil)", "919108f7-52d1-4320-1bac-f847db4148a8", false, false],
+		["Microsoft", MICROSOFT, false, false]
+	])("%s: isUUID() %s, isCLDMV() %s", (_label, id, isUUID, isCLDMV) => {
+		const uuid = new UUID(id);
+		expect(uuid.isUUID()).toBe(isUUID);
+		expect(uuid.isCLDMV()).toBe(isCLDMV);
+		expect(uuid.getInfo().isUUID).toBe(isUUID);
+		expect(uuid.getInfo().isCLDMV).toBe(isCLDMV);
 	});
 
 	test("the raw getters still read their bit positions", () => {

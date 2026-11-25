@@ -4,14 +4,14 @@
 export class UUIDValidator {
     /**
      * Validate a UUID against the specification and describe it. `fields` has the same keys
-     * for every UUID, custom or RFC: the {@link UUID#getInfo} fields (with `timestamp` as a
+     * for every UUID, CLDMV or RFC: the {@link UUID#getInfo} fields (with `timestamp` as a
      * bigint) plus the raw timestamp-variant bit fields, each null when it doesn't apply.
      * @param {Uint8Array} uuidBuffer - 16-byte UUID buffer
      * @returns {Object} Validation results
      */
     static validateCompleteUUID(uuidBuffer: Uint8Array): Object;
     /**
-     * Check the custom-variant fields
+     * Check the CLDMV fields
      * @param {Uint8Array} uuidBuffer - UUID buffer
      * @param {Object} results - Results object to populate
      * @private
@@ -34,7 +34,7 @@ export class UUIDValidator {
     private static _validateTimestampVariant;
     /**
      * Read the bit fields. `bitFields` has the same keys for every UUID, each null when the
-     * UUID's variant doesn't define it; `version` is bits 75-78 for a custom UUID and bits
+     * UUID's variant doesn't define it; `version` is bits 75-78 for a CLDMV id and bits
      * 48-51 for an RFC UUID.
      * @param {Uint8Array} uuidBuffer - UUID buffer
      * @returns {Object} Bit layout validation results

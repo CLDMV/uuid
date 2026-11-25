@@ -165,13 +165,13 @@ export function issuerCategoryName(issuerID) {
 /**
  * Name of the variant family selected by bits 64-66 (spec section 4, RFC 9562 section 4.1).
  * @param {number} variant - Bits 64-66 as a number (0-7)
- * @returns {"NCS"|"RFC 4122/9562"|"Microsoft"|"Custom"} Variant family
+ * @returns {"NCS"|"RFC 4122/9562"|"Microsoft"|"CLDMV"} Variant family; "CLDMV" is variant 111, the namespace this library defines
  */
 export function variantFamily(variant) {
 	if (variant >> 2 === 0) return "NCS";
 	if (variant >> 1 === 0b10) return "RFC 4122/9562";
 	if (variant === 0b110) return "Microsoft";
-	return "Custom";
+	return "CLDMV";
 }
 
 /**
