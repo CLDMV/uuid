@@ -39,4 +39,18 @@ describe("package exports", () => {
 		});
 		expect(res.status).toBe(0);
 	});
+
+	test("Node resolves @cldmv/uuid/entropy to the source under uuid-dev and to dist/ without it", () => {
+		const resolve = (conditions) =>
+			spawnSync(process.execPath, [...conditions, "--input-type=module", "-e", "console.log(import.meta.resolve('@cldmv/uuid/entropy'))"], {
+				cwd: repoRoot,
+				encoding: "utf8"
+			});
+		const dev = resolve(["--conditions=uuid-dev"]);
+		expect(dev.status).toBe(0);
+		expect(dev.stdout.trim()).toMatch(/\/src\/lib\/entropy-sources\.mjs$/);
+		const published = resolve([]);
+		expect(published.status).toBe(0);
+		expect(published.stdout.trim()).toMatch(/\/dist\/lib\/entropy-sources\.mjs$/);
+	});
 });

@@ -837,6 +837,39 @@ UUID.OID; // ISO OID namespace
 UUID.X500; // X.500 DN namespace
 ```
 
+### Entropy helpers (`@cldmv/uuid/entropy`)
+
+`EntropySource` is a set of static helpers for sizing and checking the randomness behind ids. It lives on its own subpath, so it stays out of the main bundle. It works on `Uint8Array` (Node `Buffer`s work as inputs) and runs in browsers: bytes come from `@cldmv/uuid/rng` and SHA-256 from `@cldmv/uuid/hash`, both of which have browser variants.
+
+```javascript
+import { EntropySource } from "@cldmv/uuid/entropy";
+
+// Random bits needed for a one-in-a-billion collision chance across a million ids (birthday bound)
+EntropySource.calculateRequiredEntropy(1e-9, 1_000_000); // => 69
+
+const bytes = EntropySource.generateSecureBytes(16); // Uint8Array(16) from the platform CSPRNG
+EntropySource.generateEntropy(130); // 17 bytes: bits rounded up to whole bytes
+
+// Sanity-check a byte source
+const report = EntropySource.validateEntropyQuality(bytes);
+report.passed; // true for a healthy source
+report.tests.bitBalance; // { passed, value, min, max, description }
+```
+
+| Method                                                               | Returns                                                                                                                                                                         |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `generateSecureBytes(byteCount)`                                     | `byteCount` random bytes                                                                                                                                                        |
+| `generateEntropy(bits)`                                              | Random bytes, `bits` rounded up to whole bytes                                                                                                                                  |
+| `calculateRequiredEntropy(probability, count)`                       | Random bits needed to keep the collision chance across `count` ids at or below `probability`                                                                                    |
+| `validateEntropyQuality(bytes)`                                      | A report with four checks: not all zeros, not all ones, set-bit share within 4 standard deviations of 50% (the window narrows as the input grows), no long run of one bit value |
+| `generateValidatedEntropy(byteCount, [maxAttempts=10])`              | Random bytes that pass `validateEntropyQuality`, retrying up to `maxAttempts` times                                                                                             |
+| `mixEntropySources(sources)`                                         | The XOR of the byte arrays, as long as the longest (shorter ones padded with zeros)                                                                                             |
+| `createTimestampIndependentEntropy(timestamp, [additionalBytes=16])` | SHA-256 of the timestamp plus `additionalBytes` fresh random bytes (32 bytes)                                                                                                   |
+| `estimateShannonEntropy(bytes)`                                      | Estimated bits of information from byte-value frequencies                                                                                                                       |
+| `analyzeEntropySource(generator, [sampleCount=100])`                 | Repeated-output and timing warnings for a generator function                                                                                                                    |
+
+`validateEntropyQuality` catches a broken or stuck source; it doesn't prove randomness. A fair source fails it about once in 16,000 checks at any length.
+
 ---
 
 ## 📐 Custom UUID Specification Details
@@ -1194,6 +1227,7 @@ The code lives in `src/`. `npm run build` bundles it with tsup into `dist/`, whi
 - `src/index.cjs` → `dist/index.cjs`: the CommonJS entry, copied verbatim. It `require()`s the sibling `index.mjs`.
 - `src/main.mjs` → `dist/main.mjs`: the deprecated `./main` alias, which imports `./index.mjs`.
 - `src/lib/{rng,bytes,hash}{,-browser}.mjs` → `dist/lib/`: the `./rng`, `./bytes` and `./hash` subpaths.
+- `src/lib/entropy-sources.mjs` → `dist/lib/entropy-sources.mjs`: the `./entropy` subpath, one file for Node and browsers.
 
 `npm run types:build` regenerates the declarations in `types/src/`.
 

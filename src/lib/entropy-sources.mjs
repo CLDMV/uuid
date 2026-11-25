@@ -14,14 +14,26 @@
  */
 
 /**
- * Entropy Sources and Validation
+ * Entropy helpers, published as `@cldmv/uuid/entropy`.
  *
- * Provides cryptographically secure entropy sources for UUID generation
- * while ensuring compliance with specification requirements.
+ * Secure random bytes, the birthday-bound math for sizing an id's random field, quick sanity
+ * checks on a byte source, XOR mixing, a timestamp-plus-random digest and a Shannon estimate.
+ * Everything works on `Uint8Array` (a Node `Buffer` is one, so Buffers work as inputs) and
+ * runs in browsers: bytes come from `@cldmv/uuid/rng`, hex from `@cldmv/uuid/bytes` and
+ * SHA-256 from `@cldmv/uuid/hash`, each of which has a browser variant.
  */
 
-import crypto from "crypto";
+import { randomBytes } from "@cldmv/uuid/rng";
+import { toHex } from "@cldmv/uuid/bytes";
+import { sha256 } from "@cldmv/uuid/hash";
 import { toTimestampBigInt } from "./timestamp.mjs";
+
+/**
+ * How many standard deviations the set-bit count may stray from half before
+ * validateEntropyQuality flags it. At 4, a fair source is flagged about once in 16,000 checks
+ * at any length.
+ */
+const BIT_BALANCE_SIGMAS = 4;
 
 /**
  * Entropy source and validation utilities
@@ -30,21 +42,20 @@ class EntropySource {
 	/**
 	 * Generate cryptographically secure random bytes
 	 * @param {number} byteCount - Number of bytes to generate
-	 * @returns {Buffer} Random bytes
+	 * @returns {Uint8Array} Random bytes
 	 */
 	static generateSecureBytes(byteCount) {
 		if (!Number.isInteger(byteCount) || byteCount <= 0) {
 			throw new Error("Byte count must be a positive integer");
 		}
 
-		// Use Node.js crypto.randomBytes which provides cryptographically secure random data
-		return crypto.randomBytes(byteCount);
+		return randomBytes(byteCount);
 	}
 
 	/**
-	 * Generate entropy for UUID with specified bit requirements
+	 * Generate at least the given number of random bits, rounded up to whole bytes
 	 * @param {number} entropyBits - Number of entropy bits required
-	 * @returns {Buffer} Entropy buffer
+	 * @returns {Uint8Array} Random bytes
 	 */
 	static generateEntropy(entropyBits) {
 		if (!Number.isInteger(entropyBits) || entropyBits <= 0) {
@@ -80,9 +91,11 @@ class EntropySource {
 	}
 
 	/**
-	 * Validate entropy quality using statistical tests
-	 * @param {Buffer} entropy - Entropy to validate
-	 * @returns {Object} Validation results
+	 * Sanity-check a byte source: not all zeros, not all ones, a set-bit count within
+	 * 4 standard deviations of half, and no excessively long run of one bit value. These
+	 * catch a broken or stuck source; they are not a randomness proof.
+	 * @param {Uint8Array} entropy - Bytes to check
+	 * @returns {{byteCount: number, bitCount: number, passed: boolean, tests: Record<string, {passed: boolean, value?: number, min?: number, max?: number, description: string}>}} Validation results
 	 */
 	static validateEntropyQuality(entropy) {
 		const results = {
@@ -104,7 +117,8 @@ class EntropySource {
 			description: "Entropy should not be all ones"
 		};
 
-		// Test 3: Check bit balance (roughly equal 0s and 1s)
+		// Test 3: Bit balance. For n fair bits the set-bit count has mean n/2 and standard
+		// deviation sqrt(n)/2, so the allowed share narrows as the input grows.
 		let setBits = 0;
 		for (let i = 0; i < entropy.length; i++) {
 			let byte = entropy[i];
@@ -116,10 +130,13 @@ class EntropySource {
 
 		const totalBits = entropy.length * 8;
 		const balance = setBits / totalBits;
+		const tolerance = totalBits ? (BIT_BALANCE_SIGMAS * Math.sqrt(totalBits)) / 2 / totalBits : 0;
 		results.tests.bitBalance = {
-			passed: balance >= 0.4 && balance <= 0.6, // Allow 40-60% balance
+			passed: Math.abs(balance - 0.5) <= tolerance,
 			value: balance,
-			description: "Bit balance should be roughly 50%"
+			min: Math.max(0, 0.5 - tolerance),
+			max: Math.min(1, 0.5 + tolerance),
+			description: "Share of set bits should be within 4 standard deviations of 50%"
 		};
 
 		// Test 4: Check for repeating patterns (simple run test)
@@ -154,10 +171,10 @@ class EntropySource {
 	}
 
 	/**
-	 * Generate high-quality entropy with validation
+	 * Generate random bytes that pass validateEntropyQuality, retrying up to maxAttempts times
 	 * @param {number} byteCount - Number of bytes to generate
-	 * @param {number} maxAttempts - Maximum number of generation attempts
-	 * @returns {Buffer} Validated entropy
+	 * @param {number} [maxAttempts=10] - Maximum number of generation attempts
+	 * @returns {Uint8Array} Validated random bytes
 	 */
 	static generateValidatedEntropy(byteCount, maxAttempts = 10) {
 		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -175,24 +192,17 @@ class EntropySource {
 	}
 
 	/**
-	 * Mix multiple entropy sources together
-	 * @param {Array<Buffer>} sources - Array of entropy sources
-	 * @returns {Buffer} Mixed entropy
+	 * XOR several byte sources together; shorter sources are padded with zeros
+	 * @param {Array<Uint8Array>} sources - Byte sources to mix
+	 * @returns {Uint8Array} Mixed bytes, as long as the longest source
 	 */
 	static mixEntropySources(sources) {
 		if (!Array.isArray(sources) || sources.length === 0) {
 			throw new Error("Must provide at least one entropy source");
 		}
 
-		if (sources.length === 1) {
-			return Buffer.from(sources[0]);
-		}
-
-		// Find the maximum length
 		const maxLength = Math.max(...sources.map((s) => s.length));
-
-		// XOR all sources together, padding shorter ones with zeros
-		const mixed = Buffer.alloc(maxLength, 0);
+		const mixed = new Uint8Array(maxLength);
 
 		for (const source of sources) {
 			for (let i = 0; i < source.length; i++) {
@@ -204,37 +214,34 @@ class EntropySource {
 	}
 
 	/**
-	 * Create entropy from timestamp with additional randomness
-	 * Note: This method ensures the entropy is NOT solely dependent on the timestamp
+	 * SHA-256 of a timestamp plus fresh random bytes, so the result never depends on the
+	 * timestamp alone
 	 * @param {number|bigint|string|Date} timestamp - Timestamp component (milliseconds for a Date); any whole number within ±(2^69 - 1)
-	 * @param {number} additionalBytes - Additional random bytes to mix in
-	 * @returns {Buffer} Mixed entropy
+	 * @param {number} [additionalBytes=16] - Random bytes to mix in
+	 * @returns {Uint8Array} 32-byte digest
 	 */
 	static createTimestampIndependentEntropy(timestamp, additionalBytes = 16) {
 		// Timestamp component: 9 bytes, two's complement, which holds the whole 70-bit range including negatives
 		let encoded = BigInt.asUintN(72, toTimestampBigInt(timestamp, "ms"));
-		const timestampBuffer = Buffer.alloc(9);
+		const randomEntropy = EntropySource.generateSecureBytes(additionalBytes);
+		const combined = new Uint8Array(9 + randomEntropy.length);
 		for (let i = 8; i >= 0; i--) {
-			timestampBuffer[i] = Number(encoded & 0xffn);
+			combined[i] = Number(encoded & 0xffn);
 			encoded >>= 8n;
 		}
+		combined.set(randomEntropy, 9);
 
-		// Generate additional random entropy
-		const randomEntropy = EntropySource.generateSecureBytes(additionalBytes);
-
-		// Hash the combination to ensure good distribution
-		const combined = Buffer.concat([timestampBuffer, randomEntropy]);
-		const hash = crypto.createHash("sha256").update(combined).digest();
-
-		return hash;
+		return sha256(combined);
 	}
 
 	/**
-	 * Estimate entropy in a buffer using Shannon entropy
-	 * @param {Buffer} buffer - Buffer to analyze
+	 * Estimate the information in a byte string from its byte-value frequencies (Shannon
+	 * entropy per byte times the length). Short inputs underestimate: n bytes can show at
+	 * most log2(n) bits per byte.
+	 * @param {Uint8Array} buffer - Bytes to analyze
 	 * @returns {number} Estimated entropy in bits
 	 */
-	static estimateShannnonEntropy(buffer) {
+	static estimateShannonEntropy(buffer) {
 		if (buffer.length === 0) {
 			return 0;
 		}
@@ -261,10 +268,11 @@ class EntropySource {
 	}
 
 	/**
-	 * Check if entropy source appears to be clock-based
-	 * @param {Function} entropyGenerator - Function that generates entropy
-	 * @param {number} sampleCount - Number of samples to analyze
-	 * @returns {Object} Analysis results
+	 * Sample a generator and flag signs that it depends on the clock (repeated outputs,
+	 * suspiciously even timing)
+	 * @param {() => Uint8Array} entropyGenerator - Function that returns a fresh byte array per call
+	 * @param {number} [sampleCount=100] - Number of samples to take
+	 * @returns {{sampleCount: number, avgGenerationTime: number, uniqueSamples: number, appearsClockBased: boolean, warnings: string[]}} Analysis results
 	 */
 	static analyzeEntropySource(entropyGenerator, sampleCount = 100) {
 		const samples = [];
@@ -291,7 +299,7 @@ class EntropySource {
 		const analysis = {
 			sampleCount,
 			avgGenerationTime: timestamps.reduce((sum, t) => sum + t.duration, 0) / timestamps.length,
-			uniqueSamples: new Set(samples.map((s) => s.toString("hex"))).size,
+			uniqueSamples: new Set(samples.map((s) => toHex(s))).size,
 			appearsClockBased: false,
 			warnings: []
 		};

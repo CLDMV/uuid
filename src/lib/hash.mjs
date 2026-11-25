@@ -14,8 +14,9 @@
  */
 
 /**
- * Node MD5/SHA-1 (selected via the "browser" export condition on ./hash).
- * Used only for RFC 4122 v3/v5 namespace hashing, not for anything security-sensitive.
+ * Node MD5/SHA-1/SHA-256 (selected via the "browser" export condition on ./hash).
+ * MD5/SHA-1 are used only for RFC 4122 v3/v5 namespace hashing, not for anything
+ * security-sensitive. SHA-256 backs EntropySource.createTimestampIndependentEntropy.
  */
 
 import crypto from "crypto";
@@ -38,4 +39,13 @@ export function md5(namespaceBytes, name) {
  */
 export function sha1(namespaceBytes, name) {
 	return crypto.createHash("sha1").update(namespaceBytes).update(name, "utf8").digest();
+}
+
+/**
+ * Compute a SHA-256 digest of `bytes`.
+ * @param {Uint8Array} bytes - Message to hash
+ * @returns {Uint8Array} 32-byte digest
+ */
+export function sha256(bytes) {
+	return crypto.createHash("sha256").update(bytes).digest();
 }
