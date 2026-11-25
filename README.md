@@ -14,18 +14,17 @@ The custom variants (`TA`, `TB`, `IA`) live in the variant `111` namespace, so t
 
 ## ✨ What's New
 
-### Latest: v2.0.0 (November 2026)
+### Latest: v2.0.1 (November 2026)
 
-- **Full-range timestamps that sort**: `TA()` / `TB()` take a number, bigint, decimal string or `Date` and hold every whole number in ±(2^69 - 1) exactly, and they now mint timestamp versions 5 and 6, whose byte order follows time across that whole range. Out-of-range input throws instead of wrapping. `getTimestamp()` returns a bigint past ±(2^53 - 1), and `getTimestampBigInt()` is always exact ([#117](https://github.com/CLDMV/uuid/pull/117), fixes [#100](https://github.com/CLDMV/uuid/issues/100)).
-- **`UUID.compare()` and migration**: `UUID.compare` sorts any mix of versions by time, and `UUID.migrate()` rewrites stored version 1-4 ids into 5/6. Breaking: the `getTimestamp()` type, and new ids don't sort with stored 3/4 ids by bytes until those are migrated. See the upgrade notes.
-- [View full v2.0.0 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v2/v2.0.0.md)
+- **`validate()` / `validateDetailed()` take strings**: both now accept a UUID string (with or without dashes, either case), a `UUID` instance or the 16 bytes. `validateDetailed()` used to throw a `TypeError` from `toHex` on a string, and malformed input now gets a clear error ([#120](https://github.com/CLDMV/uuid/pull/120), fixes [#119](https://github.com/CLDMV/uuid/issues/119)).
+- [View full v2.0.1 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v2/v2.0.1.md)
 
 ### Recent Releases
 
+- **v2.0.0** (November 2026): full-range timestamps; `TA()` / `TB()` mint versions 5 and 6, whose byte order follows time, plus `UUID.compare()` and `UUID.migrate()` to versions 5/6. Breaking: the `getTimestamp()` type and byte order against stored 3/4 ids ([#117](https://github.com/CLDMV/uuid/pull/117), fixes [#100](https://github.com/CLDMV/uuid/issues/100)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v2/v2.0.0.md))
 - **v1.5.0** (November 2026): `UUID.entropy()` builds a per-tick counter, seed fingerprint and random bits into the entropy for `TA()` / `TB()` so ids from one instance never repeat in a tick; tests also run against `dist/` ([#103](https://github.com/CLDMV/uuid/pull/103), fixes [#102](https://github.com/CLDMV/uuid/issues/102)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.5.0.md))
 - **v1.4.0** (November 2026): `TA()`/`TB()` ids sort by byte order through timestamp versions 3 and 4, and `UUID.migrate()` rewrites stored legacy ids ([#90](https://github.com/CLDMV/uuid/pull/90), fixes [#89](https://github.com/CLDMV/uuid/issues/89)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.4.0.md))
 - **v1.3.2** (November 2026): tooling only, tests resolve `src/` through `devCondition()` and CI runs `types:check`, no library change ([#91](https://github.com/CLDMV/uuid/pull/91), [#93](https://github.com/CLDMV/uuid/pull/93)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.2.md))
-- **v1.3.1** (November 2026): `engines.node` is the runtime floor again (`>=16.12.0`); the 22.22.0 toolchain floor moves to `devEngines` ([#85](https://github.com/CLDMV/uuid/pull/85)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.3.1.md))
 
 📚 **For complete version history and detailed release notes, see the [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/) folder.**
 
