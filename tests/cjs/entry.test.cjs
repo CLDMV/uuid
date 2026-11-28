@@ -30,25 +30,29 @@ const path = require("node:path");
 const repoRoot = path.resolve(__dirname, "../..");
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-const CJS_KEYS = ["ISSUER_CATEGORIES", "UUID", "uuid"];
 const ESM_KEYS = ["ISSUER_CATEGORIES", "UUID", "default", "uuid"];
+const REMOVED_STATICS = ["DNS", "MAX", "NIL", "OID", "URL", "X500"];
 
 /**
- * Checks that a CJS entry keeps the historical shape: the UUID class itself as
- * module.exports, with UUID, uuid and ISSUER_CATEGORIES as properties, all the same
- * objects as the ESM entry's.
- * @param {Function} required - What require() returned.
+ * Checks the CJS entry shape: require() returns the module object (the ESM entry exports two
+ * distinct values, so the generic shim does not collapse it to one), with the same objects as
+ * the ESM entry's. The UUID statics are reached through UUID, not at the top level.
+ * @param {object} required - What require() returned.
  * @param {object} esm - The ESM namespace of the sibling index.mjs.
  */
 function assertSameShape(required, esm) {
-	assert.equal(typeof required, "function");
+	assert.equal(typeof required, "object");
 	assert.deepEqual(Object.keys(esm).sort(), ESM_KEYS);
-	assert.equal(required, esm.default);
-	for (const key of CJS_KEYS) {
-		assert.ok(Object.hasOwn(required, key), key);
-		assert.equal(required[key], esm[key], key);
+	assert.equal(required.UUID, esm.UUID);
+	assert.equal(required.uuid, esm.UUID);
+	assert.equal(required.default, esm.UUID);
+	assert.equal(required.ISSUER_CATEGORIES, esm.ISSUER_CATEGORIES);
+	assert.ok(required.ISSUER_CATEGORIES);
+	for (const key of REMOVED_STATICS) {
+		assert.ok(!Object.hasOwn(required, key), `${key} must not be a top-level key`);
+		assert.ok(key in required.UUID, `UUID.${key}`);
 	}
-	assert.match(String(required.v4()), UUID_PATTERN);
+	assert.match(String(required.UUID.v4()), UUID_PATTERN);
 }
 
 /**
@@ -66,10 +70,11 @@ function runModule(nodeArgs, code) {
 	});
 }
 
-test("dist: require() returns the same UUID object as import", async () => {
-	const UUID = require("../../dist/index.cjs");
+test("dist: require() returns the module object with the same exports as import", async () => {
+	const required = require("../../dist/index.cjs");
+	const { UUID } = required;
 	const esm = await import("../../dist/index.mjs");
-	assertSameShape(UUID, esm);
+	assertSameShape(required, esm);
 	assert.equal(UUID.name, "UUID");
 	assert.match(String(UUID.TB()), UUID_PATTERN);
 	assert.equal((await UUID.getIssuerInfo(2)).category, "Category A");
