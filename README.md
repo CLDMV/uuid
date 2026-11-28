@@ -14,18 +14,18 @@ The custom variants (`TA`, `TB`, `IA`) live in the variant `111` namespace, so t
 
 ## ✨ What's New
 
-### Latest: v2.1.0 (November 2026)
+### Latest: v3.0.0 (November 2026)
 
-- **Entropy helpers, published**: `import { EntropySource } from "@cldmv/uuid/entropy"` gives secure random bytes, the birthday-bound math for sizing an id's random field (`calculateRequiredEntropy(1e-9, 1_000_000)` → 69 bits), sanity checks for a byte source, XOR mixing and a Shannon estimate. It runs in browsers as well as Node, and its bit-balance check now scales with input length ([#136](https://github.com/CLDMV/uuid/pull/136), resolves [#135](https://github.com/CLDMV/uuid/issues/135)).
-- **`sha256` in `@cldmv/uuid/hash`**, with a synchronous pure-JS browser build. The main entry is unchanged.
-- [View full v2.1.0 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v2/v2.1.0.md)
+- **Breaking: `require("@cldmv/uuid")` returns the module object**: the CommonJS entry is now the generic shim, so `require()` gives the same exports as `import`, `{ default, UUID, uuid, ISSUER_CATEGORIES }`, not the `UUID` class. Use `const { UUID } = require("@cldmv/uuid")`, and call statics on it (`UUID.v4()`, `UUID.NIL`). `.UUID`, `.uuid` and destructuring keep working; ESM `import` is unchanged ([#141](https://github.com/CLDMV/uuid/pull/141), fixes [#140](https://github.com/CLDMV/uuid/issues/140)).
+- `ci.yml` cancels superseded runs on `next` and `hotfixes` ([#142](https://github.com/CLDMV/uuid/pull/142), fixes [#139](https://github.com/CLDMV/uuid/issues/139)).
+- [View full v3.0.0 Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v3/v3.0.0.md)
 
 ### Recent Releases
 
+- **v2.1.0** (November 2026): `@cldmv/uuid/entropy` publishes the `EntropySource` helpers and `@cldmv/uuid/hash` gains `sha256` ([#136](https://github.com/CLDMV/uuid/pull/136), resolves [#135](https://github.com/CLDMV/uuid/issues/135)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v2/v2.1.0.md))
 - **v2.0.1** (November 2026): one set of detail fields for every UUID, RFC or custom (`null` where a field doesn't apply), `validate()` takes strings, and `UUID.v1()` / `UUID.v6()` write the right time ([#120](https://github.com/CLDMV/uuid/pull/120), fixes [#119](https://github.com/CLDMV/uuid/issues/119), [#123](https://github.com/CLDMV/uuid/issues/123) and [#124](https://github.com/CLDMV/uuid/issues/124)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v2/v2.0.1.md))
 - **v2.0.0** (November 2026): full-range timestamps; `TA()` / `TB()` mint versions 5 and 6, whose byte order follows time, plus `UUID.compare()` and `UUID.migrate()` to versions 5/6. Breaking: the `getTimestamp()` type and byte order against stored 3/4 ids ([#117](https://github.com/CLDMV/uuid/pull/117), fixes [#100](https://github.com/CLDMV/uuid/issues/100)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v2/v2.0.0.md))
 - **v1.5.0** (November 2026): `UUID.entropy()` builds a per-tick counter, seed fingerprint and random bits into the entropy for `TA()` / `TB()` so ids from one instance never repeat in a tick; tests also run against `dist/` ([#103](https://github.com/CLDMV/uuid/pull/103), fixes [#102](https://github.com/CLDMV/uuid/issues/102)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.5.0.md))
-- **v1.4.0** (November 2026): `TA()`/`TB()` ids sort by byte order through timestamp versions 3 and 4, and `UUID.migrate()` rewrites stored legacy ids ([#90](https://github.com/CLDMV/uuid/pull/90), fixes [#89](https://github.com/CLDMV/uuid/issues/89)) ([Changelog](https://github.com/CLDMV/uuid/blob/master/docs/changelog/v1/v1.4.0.md))
 
 📚 **For complete version history and detailed release notes, see the [docs/changelog/](https://github.com/CLDMV/uuid/tree/master/docs/changelog/) folder.**
 
@@ -64,7 +64,7 @@ The specification is designed for formal RFC submission and includes comprehensi
 ### Requirements
 
 - **Node.js**: >=16.12.0 for `import` (the package's `engines.node` floor). Any modern browser bundler works too, through the `browser` export condition.
-- **CommonJS (`require()`)**: needs Node.js ^20.19.0 or >=22.13.0. `dist/index.cjs` is a few lines that load the ESM build through Node's synchronous `require(esm)`, so `require()` and `import` return the same objects. Node.js versions without `require(esm)` get a clear `ERR_REQUIRE_ESM` error; on those, load the package with `import()` instead.
+- **CommonJS (`require()`)**: needs Node.js ^20.19.0 or >=22.13.0. `dist/index.cjs` is a few lines that load the ESM build through Node's synchronous `require(esm)`, so `require()` returns the same exports as `import`, as the module object (`{ default, UUID, uuid, ISSUER_CATEGORIES }`). Node.js versions without `require(esm)` get a clear `ERR_REQUIRE_ESM` error; on those, load the package with `import()` instead.
 - **Development**: developing this package needs Node.js 22.22.0 or later (`devEngines`).
 - **`@cldmv/uuid/main`** is a deprecated alias of the package root. It exports the same objects and prints a one-time `DeprecationWarning` (code `CLDMV_UUID_MAIN`); import `@cldmv/uuid` instead. It will be removed in the next major version.
 
@@ -161,7 +161,7 @@ if (UUID.validateRFC(v4)) {
 CommonJS works the same way on Node.js ^20.19.0 or >=22.13.0:
 
 ```javascript
-const UUID = require("@cldmv/uuid"); // also UUID.UUID, UUID.uuid, UUID.ISSUER_CATEGORIES
+const { UUID } = require("@cldmv/uuid"); // also uuid, ISSUER_CATEGORIES and default
 const id = UUID.TB();
 ```
 
