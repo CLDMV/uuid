@@ -64,7 +64,7 @@ The specification is designed for formal RFC submission and includes comprehensi
 ### Requirements
 
 - **Node.js**: >=16.12.0 for `import` (the package's `engines.node` floor). Any modern browser bundler works too, through the `browser` export condition.
-- **CommonJS (`require()`)**: needs Node.js ^20.19.0 or >=22.13.0. `dist/index.cjs` is a few lines that load the ESM build through Node's synchronous `require(esm)`, so `require()` and `import` return the same objects. Node.js versions without `require(esm)` get a clear `ERR_REQUIRE_ESM` error; on those, load the package with `import()` instead.
+- **CommonJS (`require()`)**: needs Node.js ^20.19.0 or >=22.13.0. `dist/index.cjs` is a few lines that load the ESM build through Node's synchronous `require(esm)`, so `require()` returns the same exports as `import`, as the module object (`{ default, UUID, uuid, ISSUER_CATEGORIES }`). Node.js versions without `require(esm)` get a clear `ERR_REQUIRE_ESM` error; on those, load the package with `import()` instead.
 - **Development**: developing this package needs Node.js 22.22.0 or later (`devEngines`).
 - **`@cldmv/uuid/main`** is a deprecated alias of the package root. It exports the same objects and prints a one-time `DeprecationWarning` (code `CLDMV_UUID_MAIN`); import `@cldmv/uuid` instead. It will be removed in the next major version.
 
@@ -161,7 +161,7 @@ if (UUID.validateRFC(v4)) {
 CommonJS works the same way on Node.js ^20.19.0 or >=22.13.0:
 
 ```javascript
-const UUID = require("@cldmv/uuid"); // also UUID.UUID, UUID.uuid, UUID.ISSUER_CATEGORIES
+const { UUID } = require("@cldmv/uuid"); // also uuid, ISSUER_CATEGORIES and default
 const id = UUID.TB();
 ```
 
